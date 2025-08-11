@@ -6,7 +6,7 @@ import (
 	"channel-api/internal/domain/shared"
 )
 
-// Template 範本聚合根
+// Template is the aggregate root for templates.
 type Template struct {
 	id          *TemplateID
 	name        *TemplateName
@@ -19,7 +19,7 @@ type Template struct {
 	version     *Version
 }
 
-// NewTemplate 建立新範本
+// NewTemplate creates a new template.
 func NewTemplate(
 	name *TemplateName,
 	description *Description,
@@ -28,7 +28,7 @@ func NewTemplate(
 	content *TemplateContent,
 	tags *Tags,
 ) (*Template, error) {
-	// 驗證必要欄位
+	// Validate required fields
 	if name == nil {
 		return nil, errors.New("template name is required")
 	}
@@ -39,7 +39,7 @@ func NewTemplate(
 		return nil, errors.New("template content is required")
 	}
 
-	// 設定預設值
+	// Set default values
 	if description == nil {
 		description, _ = NewDescription("")
 	}
@@ -63,7 +63,7 @@ func NewTemplate(
 	}, nil
 }
 
-// ReconstructTemplate 從持久化資料重建範本
+// ReconstructTemplate reconstructs a template from persistent data.
 func ReconstructTemplate(
 	id *TemplateID,
 	name *TemplateName,
@@ -88,52 +88,52 @@ func ReconstructTemplate(
 	}
 }
 
-// ID 取得範本 ID
+// ID gets the template ID.
 func (t *Template) ID() *TemplateID {
 	return t.id
 }
 
-// Name 取得範本名稱
+// Name gets the template name.
 func (t *Template) Name() *TemplateName {
 	return t.name
 }
 
-// Description 取得描述
+// Description gets the description.
 func (t *Template) Description() *Description {
 	return t.description
 }
 
-// ChannelType 取得通道類型
+// ChannelType gets the channel type.
 func (t *Template) ChannelType() shared.ChannelType {
 	return t.channelType
 }
 
-// Subject 取得主題
+// Subject gets the subject.
 func (t *Template) Subject() *Subject {
 	return t.subject
 }
 
-// Content 取得範本內容
+// Content gets the template content.
 func (t *Template) Content() *TemplateContent {
 	return t.content
 }
 
-// Tags 取得標籤
+// Tags gets the tags.
 func (t *Template) Tags() *Tags {
 	return t.tags
 }
 
-// Timestamps 取得時間戳記
+// Timestamps gets the timestamps.
 func (t *Template) Timestamps() *shared.Timestamps {
 	return t.timestamps
 }
 
-// Version 取得版本號
+// Version gets the version number.
 func (t *Template) Version() *Version {
 	return t.version
 }
 
-// Update 更新範本
+// Update updates the template.
 func (t *Template) Update(
 	name *TemplateName,
 	description *Description,
@@ -142,7 +142,7 @@ func (t *Template) Update(
 	content *TemplateContent,
 	tags *Tags,
 ) error {
-	// 驗證必要欄位
+	// Validate required fields
 	if name == nil {
 		return errors.New("template name is required")
 	}
@@ -153,7 +153,7 @@ func (t *Template) Update(
 		return errors.New("template content is required")
 	}
 
-	// 設定預設值
+	// Set default values
 	if description == nil {
 		description, _ = NewDescription("")
 	}
@@ -164,7 +164,7 @@ func (t *Template) Update(
 		tags = NewTags(nil)
 	}
 
-	// 更新欄位
+	// Update fields
 	t.name = name
 	t.description = description
 	t.channelType = channelType
@@ -177,7 +177,7 @@ func (t *Template) Update(
 	return nil
 }
 
-// Delete 軟刪除範本
+// Delete soft deletes the template.
 func (t *Template) Delete() error {
 	if t.timestamps.IsDeleted() {
 		return errors.New("template is already deleted")
@@ -186,41 +186,41 @@ func (t *Template) Delete() error {
 	return nil
 }
 
-// IsDeleted 檢查範本是否已刪除
+// IsDeleted checks if the template is deleted.
 func (t *Template) IsDeleted() bool {
 	return t.timestamps.IsDeleted()
 }
 
-// HasTag 檢查是否包含指定標籤
+// HasTag checks if it contains the specified tag.
 func (t *Template) HasTag(tag string) bool {
 	return t.tags.Contains(tag)
 }
 
-// HasAnyTag 檢查是否包含任一指定標籤
+// HasAnyTag checks if it contains any of the specified tags.
 func (t *Template) HasAnyTag(tags []string) bool {
 	return t.tags.ContainsAny(tags)
 }
 
-// MatchesType 檢查通道類型是否匹配
+// MatchesType checks if the channel type matches.
 func (t *Template) MatchesType(channelType shared.ChannelType) bool {
 	return t.channelType == channelType
 }
 
-// GetAllVariables 取得範本中的所有變數
+// GetAllVariables gets all variables in the template.
 func (t *Template) GetAllVariables() []string {
 	variables := make(map[string]bool)
 	
-	// 從主題中提取變數
+	// Extract variables from the subject
 	for _, variable := range t.subject.ExtractVariables() {
 		variables[variable] = true
 	}
 	
-	// 從內容中提取變數
+	// Extract variables from the content
 	for _, variable := range t.content.ExtractVariables() {
 		variables[variable] = true
 	}
 	
-	// 轉換為切片
+	// Convert to slice
 	result := make([]string, 0, len(variables))
 	for variable := range variables {
 		result = append(result, variable)
@@ -229,7 +229,7 @@ func (t *Template) GetAllVariables() []string {
 	return result
 }
 
-// ValidateVariables 驗證提供的變數是否包含範本所需的所有變數
+// ValidateVariables validates if the provided variables contain all the required variables for the template.
 func (t *Template) ValidateVariables(providedVariables map[string]interface{}) []string {
 	requiredVariables := t.GetAllVariables()
 	missingVariables := make([]string, 0)

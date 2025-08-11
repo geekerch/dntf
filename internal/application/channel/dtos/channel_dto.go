@@ -5,7 +5,7 @@ import (
 	"channel-api/internal/domain/channel"
 )
 
-// CreateChannelRequest 建立通道請求 DTO
+// CreateChannelRequest is the DTO for creating a channel.
 type CreateChannelRequest struct {
 	ChannelName    string                 `json:"channelName" binding:"required"`
 	Description    string                 `json:"description"`
@@ -18,7 +18,7 @@ type CreateChannelRequest struct {
 	Tags           []string               `json:"tags"`
 }
 
-// UpdateChannelRequest 更新通道請求 DTO
+// UpdateChannelRequest is the DTO for updating a channel.
 type UpdateChannelRequest struct {
 	ChannelID      string                 `json:"channelId,omitempty"`
 	ChannelName    string                 `json:"channelName" binding:"required"`
@@ -32,7 +32,7 @@ type UpdateChannelRequest struct {
 	Tags           []string               `json:"tags"`
 }
 
-// ListChannelsRequest 查詢通道列表請求 DTO
+// ListChannelsRequest is the DTO for listing channels.
 type ListChannelsRequest struct {
 	ChannelType    string   `form:"channelType" json:"channelType"`
 	Tags           []string `form:"tags" json:"tags"`
@@ -40,7 +40,7 @@ type ListChannelsRequest struct {
 	MaxResultCount int      `form:"maxResultCount" json:"maxResultCount"`
 }
 
-// ChannelResponse 通道回應 DTO
+// ChannelResponse is the DTO for a channel response.
 type ChannelResponse struct {
 	ChannelID      string            `json:"channelId"`
 	ChannelName    string            `json:"channelName"`
@@ -57,7 +57,7 @@ type ChannelResponse struct {
 	LastUsed       *int64            `json:"lastUsed,omitempty"`
 }
 
-// ChannelSummaryResponse 通道摘要回應 DTO (用於列表查詢)
+// ChannelSummaryResponse is the DTO for a channel summary response (for list queries).
 type ChannelSummaryResponse struct {
 	ChannelID   string   `json:"channelId"`
 	ChannelName string   `json:"channelName"`
@@ -68,7 +68,7 @@ type ChannelSummaryResponse struct {
 	UpdatedAt   int64    `json:"updatedAt"`
 }
 
-// ListChannelsResponse 通道列表回應 DTO
+// ListChannelsResponse is the DTO for a list of channels.
 type ListChannelsResponse struct {
 	Items          []ChannelSummaryResponse `json:"items"`
 	SkipCount      int                      `json:"skipCount"`
@@ -77,26 +77,26 @@ type ListChannelsResponse struct {
 	HasMore        bool                     `json:"hasMore"`
 }
 
-// DeleteChannelResponse 刪除通道回應 DTO
+// DeleteChannelResponse is the DTO for a delete channel response.
 type DeleteChannelResponse struct {
 	ChannelID string `json:"channelId"`
 	Deleted   bool   `json:"deleted"`
 	DeletedAt int64  `json:"deletedAt"`
 }
 
-// CommonSettingsDTO 通用設定 DTO
+// CommonSettingsDTO is the DTO for common settings.
 type CommonSettingsDTO struct {
 	Timeout       int `json:"timeout" binding:"required,min=1"`
 	RetryAttempts int `json:"retryAttempts" binding:"min=0"`
 	RetryDelay    int `json:"retryDelay" binding:"min=0"`
 }
 
-// ToCommonSettings 轉換為領域物件
+// ToCommonSettings converts to a domain object.
 func (dto CommonSettingsDTO) ToCommonSettings() (*shared.CommonSettings, error) {
 	return shared.NewCommonSettings(dto.Timeout, dto.RetryAttempts, dto.RetryDelay)
 }
 
-// FromCommonSettings 從領域物件建立 DTO
+// FromCommonSettings creates a DTO from a domain object.
 func FromCommonSettings(settings *shared.CommonSettings) CommonSettingsDTO {
 	return CommonSettingsDTO{
 		Timeout:       settings.Timeout,
@@ -105,7 +105,7 @@ func FromCommonSettings(settings *shared.CommonSettings) CommonSettingsDTO {
 	}
 }
 
-// RecipientDTO 收件人 DTO
+// RecipientDTO is the DTO for a recipient.
 type RecipientDTO struct {
 	Name   string `json:"name" binding:"required"`
 	Email  string `json:"email,omitempty"`
@@ -113,12 +113,12 @@ type RecipientDTO struct {
 	Type   string `json:"type" binding:"required"`
 }
 
-// ToRecipient 轉換為領域物件
+// ToRecipient converts to a domain object.
 func (dto RecipientDTO) ToRecipient() (*channel.Recipient, error) {
 	return channel.NewRecipient(dto.Name, dto.Email, dto.Target, dto.Type)
 }
 
-// FromRecipient 從領域物件建立 DTO
+// FromRecipient creates a DTO from a domain object.
 func FromRecipient(recipient *channel.Recipient) RecipientDTO {
 	return RecipientDTO{
 		Name:   recipient.Name,
@@ -128,7 +128,7 @@ func FromRecipient(recipient *channel.Recipient) RecipientDTO {
 	}
 }
 
-// ToRecipientsSlice 轉換為收件人切片
+// ToRecipientsSlice converts to a slice of recipients.
 func ToRecipientsSlice(dtos []RecipientDTO) ([]*channel.Recipient, error) {
 	recipients := make([]*channel.Recipient, 0, len(dtos))
 	for _, dto := range dtos {
@@ -141,7 +141,7 @@ func ToRecipientsSlice(dtos []RecipientDTO) ([]*channel.Recipient, error) {
 	return recipients, nil
 }
 
-// FromRecipientsSlice 從收件人切片建立 DTO 切片
+// FromRecipientsSlice creates a slice of DTOs from a slice of recipients.
 func FromRecipientsSlice(recipients []*channel.Recipient) []RecipientDTO {
 	dtos := make([]RecipientDTO, 0, len(recipients))
 	for _, recipient := range recipients {

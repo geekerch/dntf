@@ -9,13 +9,13 @@ import (
 	"channel-api/internal/domain/services"
 )
 
-// DeleteChannelUseCase 刪除通道用例
+// DeleteChannelUseCase is the use case for deleting a channel.
 type DeleteChannelUseCase struct {
 	channelRepo channel.ChannelRepository
 	validator   *services.ChannelValidator
 }
 
-// NewDeleteChannelUseCase 建立用例實例
+// NewDeleteChannelUseCase creates a use case instance.
 func NewDeleteChannelUseCase(
 	channelRepo channel.ChannelRepository,
 	validator *services.ChannelValidator,
@@ -26,41 +26,41 @@ func NewDeleteChannelUseCase(
 	}
 }
 
-// Execute 執行刪除通道
+// Execute executes the delete channel operation.
 func (uc *DeleteChannelUseCase) Execute(ctx context.Context, channelID string) (*dtos.DeleteChannelResponse, error) {
-	// 1. 驗證輸入參數
+	// 1. Validate input parameters
 	if channelID == "" {
 		return nil, fmt.Errorf("channel ID is required")
 	}
 
-	// 2. 轉換為領域物件
+	// 2. Convert to domain object
 	id, err := channel.NewChannelIDFromString(channelID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid channel ID: %w", err)
 	}
 
-	// 3. 業務驗證
+	// 3. Business validation
 	if err := uc.validator.ValidateChannelDeletion(ctx, id); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 4. 查詢通道
+	// 4. Query the channel
 	ch, err := uc.channelRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	// 5. 執行軟刪除
+	// 5. Perform soft deletion
 	if err := ch.Delete(); err != nil {
 		return nil, fmt.Errorf("failed to delete channel: %w", err)
 	}
 
-	// 6. 持久化
+	// 6. Persist
 	if err := uc.channelRepo.Update(ctx, ch); err != nil {
 		return nil, fmt.Errorf("failed to save channel deletion: %w", err)
 	}
 
-	// 7. 轉換為回應 DTO
+	// 7. Convert to response DTO
 	response := &dtos.DeleteChannelResponse{
 		ChannelID: ch.ID().String(),
 		Deleted:   true,

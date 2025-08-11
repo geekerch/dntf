@@ -11,13 +11,13 @@ import (
 	"channel-api/internal/domain/template"
 )
 
-// CreateChannelUseCase 建立通道用例
+// CreateChannelUseCase is the use case for creating a channel.
 type CreateChannelUseCase struct {
 	channelRepo channel.ChannelRepository
 	validator   *services.ChannelValidator
 }
 
-// NewCreateChannelUseCase 建立用例實例
+// NewCreateChannelUseCase creates a use case instance.
 func NewCreateChannelUseCase(
 	channelRepo channel.ChannelRepository,
 	validator *services.ChannelValidator,
@@ -28,20 +28,20 @@ func NewCreateChannelUseCase(
 	}
 }
 
-// Execute 執行建立通道
+// Execute executes the create channel operation.
 func (uc *CreateChannelUseCase) Execute(ctx context.Context, request *dtos.CreateChannelRequest) (*dtos.ChannelResponse, error) {
-	// 1. 驗證輸入參數
+	// 1. Validate input parameters
 	if err := uc.validateRequest(request); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	// 2. 轉換為領域物件
+	// 2. Convert to domain objects
 	domainObjects, err := uc.convertToDomainObjects(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert to domain objects: %w", err)
 	}
 
-	// 3. 業務驗證
+	// 3. Business validation
 	if err := uc.validator.ValidateChannelForCreation(
 		ctx,
 		domainObjects.Name,
@@ -52,7 +52,7 @@ func (uc *CreateChannelUseCase) Execute(ctx context.Context, request *dtos.Creat
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 4. 建立通道實體
+	// 4. Create a channel entity
 	ch, err := channel.NewChannel(
 		domainObjects.Name,
 		domainObjects.Description,
@@ -68,17 +68,17 @@ func (uc *CreateChannelUseCase) Execute(ctx context.Context, request *dtos.Creat
 		return nil, fmt.Errorf("failed to create channel: %w", err)
 	}
 
-	// 5. 持久化
+	// 5. Persist
 	if err := uc.channelRepo.Save(ctx, ch); err != nil {
 		return nil, fmt.Errorf("failed to save channel: %w", err)
 	}
 
-	// 6. 轉換為回應 DTO
+	// 6. Convert to response DTO
 	response := uc.convertToResponse(ch)
 	return response, nil
 }
 
-// validateRequest 驗證請求參數
+// validateRequest validates the request parameters.
 func (uc *CreateChannelUseCase) validateRequest(request *dtos.CreateChannelRequest) error {
 	if request == nil {
 		return fmt.Errorf("request cannot be nil")
@@ -95,7 +95,7 @@ func (uc *CreateChannelUseCase) validateRequest(request *dtos.CreateChannelReque
 	return nil
 }
 
-// DomainObjects 轉換後的領域物件
+// DomainObjects are the converted domain objects.
 type DomainObjects struct {
 	Name           *channel.ChannelName
 	Description    *channel.Description
@@ -107,27 +107,27 @@ type DomainObjects struct {
 	Tags           *channel.Tags
 }
 
-// convertToDomainObjects 轉換為領域物件
+// convertToDomainObjects converts to domain objects.
 func (uc *CreateChannelUseCase) convertToDomainObjects(request *dtos.CreateChannelRequest) (*DomainObjects, error) {
-	// 通道名稱
+	// Channel name
 	name, err := channel.NewChannelName(request.ChannelName)
 	if err != nil {
 		return nil, fmt.Errorf("invalid channel name: %w", err)
 	}
 
-	// 描述
+	// Description
 	description, err := channel.NewDescription(request.Description)
 	if err != nil {
 		return nil, fmt.Errorf("invalid description: %w", err)
 	}
 
-	// 通道類型
+	// Channel type
 	channelType := shared.ChannelType(request.ChannelType)
 	if !channelType.IsValid() {
 		return nil, fmt.Errorf("invalid channel type: %s", request.ChannelType)
 	}
 
-	// 範本 ID
+	// Template ID
 	var templateID *template.TemplateID
 	if request.TemplateID != "" {
 		templateID, err = template.NewTemplateIDFromString(request.TemplateID)
@@ -136,23 +136,23 @@ func (uc *CreateChannelUseCase) convertToDomainObjects(request *dtos.CreateChann
 		}
 	}
 
-	// 通用設定
+	// Common settings
 	commonSettings, err := request.CommonSettings.ToCommonSettings()
 	if err != nil {
 		return nil, fmt.Errorf("invalid common settings: %w", err)
 	}
 
-	// 通道配置
+	// Channel configuration
 	config := channel.NewChannelConfig(request.Config)
 
-	// 收件人
+	// Recipients
 	recipientSlice, err := dtos.ToRecipientsSlice(request.Recipients)
 	if err != nil {
 		return nil, fmt.Errorf("invalid recipients: %w", err)
 	}
 	recipients := channel.NewRecipients(recipientSlice)
 
-	// 標籤
+	// Tags
 	tags := channel.NewTags(request.Tags)
 
 	return &DomainObjects{
@@ -167,7 +167,7 @@ func (uc *CreateChannelUseCase) convertToDomainObjects(request *dtos.CreateChann
 	}, nil
 }
 
-// convertToResponse 轉換為回應 DTO
+// convertToResponse converts to a response DTO.
 func (uc *CreateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.ChannelResponse {
 	var templateID string
 	if ch.TemplateID() != nil {

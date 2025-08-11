@@ -7,7 +7,7 @@ import (
 	"channel-api/internal/domain/channel"
 )
 
-// Message 訊息聚合根
+// Message is the aggregate root for messages.
 type Message struct {
 	id               *MessageID
 	channelIDs       *ChannelIDs
@@ -18,13 +18,13 @@ type Message struct {
 	createdAt        int64
 }
 
-// NewMessage 建立新訊息
+// NewMessage creates a new message.
 func NewMessage(
 	channelIDs *ChannelIDs,
 	variables *Variables,
 	channelOverrides *ChannelOverrides,
 ) (*Message, error) {
-	// 驗證必要欄位
+	// Validate required fields
 	if channelIDs == nil {
 		return nil, errors.New("channel IDs is required")
 	}
@@ -32,7 +32,7 @@ func NewMessage(
 		return nil, errors.New("variables is required")
 	}
 
-	// 設定預設值
+	// Set default values
 	if channelOverrides == nil {
 		channelOverrides = NewChannelOverrides(nil)
 	}
@@ -48,7 +48,7 @@ func NewMessage(
 	}, nil
 }
 
-// ReconstructMessage 從持久化資料重建訊息
+// ReconstructMessage reconstructs a message from persistent data.
 func ReconstructMessage(
 	id *MessageID,
 	channelIDs *ChannelIDs,
@@ -69,48 +69,48 @@ func ReconstructMessage(
 	}
 }
 
-// ID 取得訊息 ID
+// ID gets the message ID.
 func (m *Message) ID() *MessageID {
 	return m.id
 }
 
-// ChannelIDs 取得通道 ID 列表
+// ChannelIDs gets the list of channel IDs.
 func (m *Message) ChannelIDs() *ChannelIDs {
 	return m.channelIDs
 }
 
-// Variables 取得範本變數
+// Variables gets the template variables.
 func (m *Message) Variables() *Variables {
 	return m.variables
 }
 
-// ChannelOverrides 取得通道覆寫設定
+// ChannelOverrides gets the channel override settings.
 func (m *Message) ChannelOverrides() *ChannelOverrides {
 	return m.channelOverrides
 }
 
-// Status 取得訊息狀態
+// Status gets the message status.
 func (m *Message) Status() MessageStatus {
 	return m.status
 }
 
-// Results 取得訊息結果
+// Results gets the message results.
 func (m *Message) Results() []*MessageResult {
 	return m.results
 }
 
-// CreatedAt 取得建立時間
+// CreatedAt gets the creation time.
 func (m *Message) CreatedAt() int64 {
 	return m.createdAt
 }
 
-// AddResult 新增訊息結果
+// AddResult adds a message result.
 func (m *Message) AddResult(result *MessageResult) error {
 	if result == nil {
 		return errors.New("message result cannot be nil")
 	}
 	
-	// 檢查是否已存在相同通道的結果
+	// Check if a result for the same channel already exists
 	for _, existingResult := range m.results {
 		if existingResult.ChannelID().Equals(result.ChannelID()) {
 			return errors.New("result for this channel already exists")
@@ -122,7 +122,7 @@ func (m *Message) AddResult(result *MessageResult) error {
 	return nil
 }
 
-// UpdateResult 更新指定通道的訊息結果
+// UpdateResult updates the message result for the specified channel.
 func (m *Message) UpdateResult(channelID *channel.ChannelID, result *MessageResult) error {
 	if channelID == nil {
 		return errors.New("channel ID cannot be nil")
@@ -142,7 +142,7 @@ func (m *Message) UpdateResult(channelID *channel.ChannelID, result *MessageResu
 	return errors.New("result for this channel not found")
 }
 
-// GetResult 取得指定通道的訊息結果
+// GetResult gets the message result for the specified channel.
 func (m *Message) GetResult(channelID *channel.ChannelID) (*MessageResult, bool) {
 	if channelID == nil {
 		return nil, false
@@ -157,12 +157,12 @@ func (m *Message) GetResult(channelID *channel.ChannelID) (*MessageResult, bool)
 	return nil, false
 }
 
-// IsCompleted 檢查訊息是否已完成處理
+// IsCompleted checks if the message has been processed completely.
 func (m *Message) IsCompleted() bool {
 	return len(m.results) == m.channelIDs.Count()
 }
 
-// GetSuccessfulResults 取得成功的結果
+// GetSuccessfulResults gets the successful results.
 func (m *Message) GetSuccessfulResults() []*MessageResult {
 	successful := make([]*MessageResult, 0)
 	for _, result := range m.results {
@@ -173,7 +173,7 @@ func (m *Message) GetSuccessfulResults() []*MessageResult {
 	return successful
 }
 
-// GetFailedResults 取得失敗的結果
+// GetFailedResults gets the failed results.
 func (m *Message) GetFailedResults() []*MessageResult {
 	failed := make([]*MessageResult, 0)
 	for _, result := range m.results {
@@ -184,7 +184,7 @@ func (m *Message) GetFailedResults() []*MessageResult {
 	return failed
 }
 
-// updateStatus 根據結果更新訊息狀態
+// updateStatus updates the message status based on the results.
 func (m *Message) updateStatus() {
 	if !m.IsCompleted() {
 		m.status = MessageStatusPending
@@ -203,7 +203,7 @@ func (m *Message) updateStatus() {
 	}
 }
 
-// MessageResult 訊息結果
+// MessageResult is the result of a message.
 type MessageResult struct {
 	channelID *channel.ChannelID
 	status    MessageResultStatus
@@ -212,7 +212,7 @@ type MessageResult struct {
 	sentAt    *int64
 }
 
-// MessageResultStatus 訊息結果狀態
+// MessageResultStatus is the status of a message result.
 type MessageResultStatus string
 
 const (
@@ -220,7 +220,7 @@ const (
 	MessageResultStatusFailed  MessageResultStatus = "failed"
 )
 
-// NewSuccessfulMessageResult 建立成功的訊息結果
+// NewSuccessfulMessageResult creates a successful message result.
 func NewSuccessfulMessageResult(channelID *channel.ChannelID, message string) (*MessageResult, error) {
 	if channelID == nil {
 		return nil, errors.New("channel ID is required")
@@ -239,7 +239,7 @@ func NewSuccessfulMessageResult(channelID *channel.ChannelID, message string) (*
 	}, nil
 }
 
-// NewFailedMessageResult 建立失敗的訊息結果
+// NewFailedMessageResult creates a failed message result.
 func NewFailedMessageResult(channelID *channel.ChannelID, message string, err *MessageError) (*MessageResult, error) {
 	if channelID == nil {
 		return nil, errors.New("channel ID is required")
@@ -260,48 +260,48 @@ func NewFailedMessageResult(channelID *channel.ChannelID, message string, err *M
 	}, nil
 }
 
-// ChannelID 取得通道 ID
+// ChannelID gets the channel ID.
 func (mr *MessageResult) ChannelID() *channel.ChannelID {
 	return mr.channelID
 }
 
-// Status 取得結果狀態
+// Status gets the result status.
 func (mr *MessageResult) Status() MessageResultStatus {
 	return mr.status
 }
 
-// Message 取得訊息
+// Message gets the message.
 func (mr *MessageResult) Message() string {
 	return mr.message
 }
 
-// Error 取得錯誤
+// Error gets the error.
 func (mr *MessageResult) Error() *MessageError {
 	return mr.error
 }
 
-// SentAt 取得發送時間
+// SentAt gets the sending time.
 func (mr *MessageResult) SentAt() *int64 {
 	return mr.sentAt
 }
 
-// IsSuccess 檢查是否成功
+// IsSuccess checks if it is successful.
 func (mr *MessageResult) IsSuccess() bool {
 	return mr.status == MessageResultStatusSuccess
 }
 
-// IsFailed 檢查是否失敗
+// IsFailed checks if it has failed.
 func (mr *MessageResult) IsFailed() bool {
 	return mr.status == MessageResultStatusFailed
 }
 
-// MessageError 訊息錯誤
+// MessageError is a message error.
 type MessageError struct {
 	Code    string `json:"code"`
 	Details string `json:"details"`
 }
 
-// NewMessageError 建立訊息錯誤
+// NewMessageError creates a message error.
 func NewMessageError(code, details string) *MessageError {
 	return &MessageError{
 		Code:    code,

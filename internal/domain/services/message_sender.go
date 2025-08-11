@@ -10,7 +10,7 @@ import (
 	"channel-api/internal/domain/template"
 )
 
-// MessageSender 訊息發送領域服務
+// MessageSender is the domain service for sending messages.
 type MessageSender struct {
 	channelRepo  channel.ChannelRepository
 	templateRepo template.TemplateRepository
@@ -18,7 +18,7 @@ type MessageSender struct {
 	renderer     TemplateRenderer
 }
 
-// NewMessageSender 建立訊息發送服務
+// NewMessageSender creates a message sending service.
 func NewMessageSender(
 	channelRepo channel.ChannelRepository,
 	templateRepo template.TemplateRepository,
@@ -33,34 +33,34 @@ func NewMessageSender(
 	}
 }
 
-// SendMessage 發送訊息
+// SendMessage sends a message.
 func (ms *MessageSender) SendMessage(
 	ctx context.Context,
 	channelIDs *message.ChannelIDs,
 	variables *message.Variables,
 	channelOverrides *message.ChannelOverrides,
 ) (*message.Message, error) {
-	// 建立訊息實體
+	// Create a message entity
 	msg, err := message.NewMessage(channelIDs, variables, channelOverrides)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create message: %w", err)
 	}
 
-	// 儲存訊息
+	// Save the message
 	if err := ms.messageRepo.Save(ctx, msg); err != nil {
 		return nil, fmt.Errorf("failed to save message: %w", err)
 	}
 
-	// 處理每個通道
+	// Process each channel
 	for _, channelID := range channelIDs.ToSlice() {
 		result := ms.processSingleChannel(ctx, channelID, variables, channelOverrides)
 		if err := msg.AddResult(result); err != nil {
-			// 如果新增結果失敗，記錄錯誤但繼續處理其他通道
+			// If adding the result fails, log the error but continue processing other channels
 			continue
 		}
 	}
 
-	// 更新訊息狀態
+	// Update the message status
 	if err := ms.messageRepo.Update(ctx, msg); err != nil {
 		return nil, fmt.Errorf("failed to update message: %w", err)
 	}
@@ -68,61 +68,61 @@ func (ms *MessageSender) SendMessage(
 	return msg, nil
 }
 
-// processSingleChannel 處理單一通道的訊息發送
+// processSingleChannel processes the message sending for a single channel.
 func (ms *MessageSender) processSingleChannel(
 	ctx context.Context,
 	channelID *channel.ChannelID,
 	variables *message.Variables,
 	channelOverrides *message.ChannelOverrides,
 ) *message.MessageResult {
-	// 取得通道資訊
+	// Get channel information
 	ch, err := ms.channelRepo.FindByID(ctx, channelID)
 	if err != nil {
 		return ms.createFailedResult(channelID, "Failed to retrieve channel", "CHANNEL_NOT_FOUND", err.Error())
 	}
 
-	// 檢查通道是否可以發送訊息
+	// Check if the channel can send messages
 	if err := ch.CanSendMessage(); err != nil {
 		return ms.createFailedResult(channelID, "Channel cannot send message", "CHANNEL_UNAVAILABLE", err.Error())
 	}
 
-	// 取得範本資訊
+	// Get template information
 	tmpl, err := ms.templateRepo.FindByID(ctx, ch.TemplateID())
 	if err != nil {
 		return ms.createFailedResult(channelID, "Failed to retrieve template", "TEMPLATE_NOT_FOUND", err.Error())
 	}
 
-	// 檢查通道類型是否匹配範本
+	// Check if the channel type matches the template
 	if !tmpl.MatchesType(ch.ChannelType()) {
 		return ms.createFailedResult(channelID, "Channel type mismatch with template", "TYPE_MISMATCH", 
 			fmt.Sprintf("Channel type: %s, Template type: %s", ch.ChannelType(), tmpl.ChannelType()))
 	}
 
-	// 準備渲染內容
+	// Prepare the rendering content
 	renderRequest := ms.prepareRenderRequest(ch, tmpl, variables, channelOverrides)
 
-	// 驗證變數
+	// Validate variables
 	if err := ms.validateVariables(tmpl, renderRequest.Variables); err != nil {
 		return ms.createFailedResult(channelID, "Variable validation failed", "MISSING_VARIABLES", err.Error())
 	}
 
-	// 渲染範本
+	// Render the template
 	renderedContent, err := ms.renderer.Render(ctx, renderRequest)
 	if err != nil {
 		return ms.createFailedResult(channelID, "Template rendering failed", "RENDER_ERROR", err.Error())
 	}
 
-	// 這裡應該調用實際的訊息發送服務 (例如 EmailService, SlackService 等)
-	// 由於這是領域層，我們暫時模擬成功的發送
+	// This is where the actual message sending service should be called (e.g., EmailService, SlackService, etc.)
+	// Since this is the domain layer, we temporarily simulate a successful sending
 	_ = renderedContent
 
-	// 標記通道為已使用
+	// Mark the channel as used
 	ch.MarkAsUsed()
 	if err := ms.channelRepo.Update(ctx, ch); err != nil {
-		// 更新失敗不影響發送結果，只記錄錯誤
+		// Update failure does not affect the sending result, only log the error
 	}
 
-	// 建立成功結果
+	// Create a successful result
 	result, err := message.NewSuccessfulMessageResult(channelID, "Message sent successfully")
 	if err != nil {
 		return ms.createFailedResult(channelID, "Failed to create result", "RESULT_ERROR", err.Error())
@@ -131,7 +131,7 @@ func (ms *MessageSender) processSingleChannel(
 	return result
 }
 
-// prepareRenderRequest 準備渲染請求
+// prepareRenderRequest prepares the rendering request.
 func (ms *MessageSender) prepareRenderRequest(
 	ch *channel.Channel,
 	tmpl *template.Template,
@@ -144,7 +144,7 @@ func (ms *MessageSender) prepareRenderRequest(
 		Variables: variables,
 	}
 
-	// 應用通道覆寫
+	// Apply channel overrides
 	if override, exists := channelOverrides.Get(ch.ID().String()); exists {
 		if override.HasTemplateOverride() {
 			templateOverride := override.TemplateOverride
@@ -160,7 +160,7 @@ func (ms *MessageSender) prepareRenderRequest(
 	return request
 }
 
-// validateVariables 驗證變數
+// validateVariables validates variables.
 func (ms *MessageSender) validateVariables(tmpl *template.Template, variables *message.Variables) error {
 	missingVariables := tmpl.ValidateVariables(variables.ToMap())
 	if len(missingVariables) > 0 {
@@ -169,40 +169,40 @@ func (ms *MessageSender) validateVariables(tmpl *template.Template, variables *m
 	return nil
 }
 
-// createFailedResult 建立失敗結果
+// createFailedResult creates a failed result.
 func (ms *MessageSender) createFailedResult(channelID *channel.ChannelID, msg, code, details string) *message.MessageResult {
 	msgError := message.NewMessageError(code, details)
 	result, _ := message.NewFailedMessageResult(channelID, msg, msgError)
 	return result
 }
 
-// TemplateRenderer 範本渲染器介面
+// TemplateRenderer is the interface for the template renderer.
 type TemplateRenderer interface {
 	Render(ctx context.Context, request *RenderRequest) (*RenderedContent, error)
 }
 
-// RenderRequest 渲染請求
+// RenderRequest is the rendering request.
 type RenderRequest struct {
 	Subject   *template.Subject
 	Content   *template.TemplateContent
 	Variables *message.Variables
 }
 
-// RenderedContent 渲染結果
+// RenderedContent is the rendering result.
 type RenderedContent struct {
 	Subject string
 	Content string
 }
 
-// DefaultTemplateRenderer 預設範本渲染器
+// DefaultTemplateRenderer is the default template renderer.
 type DefaultTemplateRenderer struct{}
 
-// NewDefaultTemplateRenderer 建立預設範本渲染器
+// NewDefaultTemplateRenderer creates a default template renderer.
 func NewDefaultTemplateRenderer() *DefaultTemplateRenderer {
 	return &DefaultTemplateRenderer{}
 }
 
-// Render 渲染範本
+// Render renders the template.
 func (r *DefaultTemplateRenderer) Render(ctx context.Context, request *RenderRequest) (*RenderedContent, error) {
 	if request == nil {
 		return nil, errors.New("render request is required")
@@ -210,13 +210,13 @@ func (r *DefaultTemplateRenderer) Render(ctx context.Context, request *RenderReq
 
 	variableMap := request.Variables.ToMap()
 
-	// 渲染主題
+	// Render the subject
 	renderedSubject, err := r.renderTemplate(request.Subject.String(), variableMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render subject: %w", err)
 	}
 
-	// 渲染內容
+	// Render the content
 	renderedContent, err := r.renderTemplate(request.Content.String(), variableMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render content: %w", err)
@@ -228,10 +228,10 @@ func (r *DefaultTemplateRenderer) Render(ctx context.Context, request *RenderReq
 	}, nil
 }
 
-// renderTemplate 渲染單一範本
+// renderTemplate renders a single template.
 func (r *DefaultTemplateRenderer) renderTemplate(template string, variables map[string]interface{}) (string, error) {
-	// 簡單的變數替換實現
-	// 在實際專案中，可以使用更強大的範本引擎如 text/template 或 html/template
+	// Simple variable replacement implementation
+	// In a real project, you can use a more powerful template engine such as text/template or html/template
 	result := template
 	for key, value := range variables {
 		placeholder := fmt.Sprintf("{%s}", key)

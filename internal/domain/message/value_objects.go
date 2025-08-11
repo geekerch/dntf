@@ -12,12 +12,12 @@ import (
 	"channel-api/internal/domain/template"
 )
 
-// MessageID 訊息唯一識別碼
+// MessageID is the unique identifier for a message.
 type MessageID struct {
 	value string
 }
 
-// NewMessageID 建立新的訊息 ID
+// NewMessageID creates a new message ID.
 func NewMessageID() *MessageID {
 	timestamp := time.Now().Unix()
 	return &MessageID{
@@ -25,7 +25,7 @@ func NewMessageID() *MessageID {
 	}
 }
 
-// NewMessageIDFromString 從字串建立訊息 ID
+// NewMessageIDFromString creates a message ID from a string.
 func NewMessageIDFromString(id string) (*MessageID, error) {
 	if id == "" {
 		return nil, errors.New("message ID cannot be empty")
@@ -33,12 +33,12 @@ func NewMessageIDFromString(id string) (*MessageID, error) {
 	return &MessageID{value: id}, nil
 }
 
-// String 返回字串表示
+// String returns the string representation.
 func (m *MessageID) String() string {
 	return m.value
 }
 
-// Equals 比較兩個訊息 ID 是否相等
+// Equals compares whether two message IDs are equal.
 func (m *MessageID) Equals(other *MessageID) bool {
 	if other == nil {
 		return false
@@ -46,7 +46,7 @@ func (m *MessageID) Equals(other *MessageID) bool {
 	return m.value == other.value
 }
 
-// MessageStatus 訊息狀態
+// MessageStatus is the status of the message.
 type MessageStatus string
 
 const (
@@ -56,7 +56,7 @@ const (
 	MessageStatusPending        MessageStatus = "pending"
 )
 
-// IsValid 驗證訊息狀態是否有效
+// IsValid validates if the message status is valid.
 func (ms MessageStatus) IsValid() bool {
 	switch ms {
 	case MessageStatusSuccess, MessageStatusFailed, MessageStatusPartialSuccess, MessageStatusPending:
@@ -66,12 +66,12 @@ func (ms MessageStatus) IsValid() bool {
 	}
 }
 
-// Variables 範本變數
+// Variables are the template variables.
 type Variables struct {
 	variables map[string]interface{}
 }
 
-// NewVariables 建立範本變數
+// NewVariables creates template variables.
 func NewVariables(variables map[string]interface{}) *Variables {
 	if variables == nil {
 		variables = make(map[string]interface{})
@@ -79,18 +79,18 @@ func NewVariables(variables map[string]interface{}) *Variables {
 	return &Variables{variables: variables}
 }
 
-// Get 取得變數值
+// Get gets the variable value.
 func (v *Variables) Get(key string) (interface{}, bool) {
 	value, exists := v.variables[key]
 	return value, exists
 }
 
-// Set 設定變數值
+// Set sets the variable value.
 func (v *Variables) Set(key string, value interface{}) {
 	v.variables[key] = value
 }
 
-// ToMap 轉換為 map
+// ToMap converts to a map.
 func (v *Variables) ToMap() map[string]interface{} {
 	result := make(map[string]interface{})
 	for k, v := range v.variables {
@@ -99,7 +99,7 @@ func (v *Variables) ToMap() map[string]interface{} {
 	return result
 }
 
-// Keys 取得所有變數鍵
+// Keys gets all variable keys.
 func (v *Variables) Keys() []string {
 	keys := make([]string, 0, len(v.variables))
 	for key := range v.variables {
@@ -108,96 +108,96 @@ func (v *Variables) Keys() []string {
 	return keys
 }
 
-// HasKey 檢查是否包含指定鍵
+// HasKey checks if it contains the specified key.
 func (v *Variables) HasKey(key string) bool {
 	_, exists := v.variables[key]
 	return exists
 }
 
-// ChannelOverride 通道覆寫設定
+// ChannelOverride is the channel override setting.
 type ChannelOverride struct {
 	Recipients       *channel.Recipients      `json:"recipients,omitempty"`
 	TemplateOverride *TemplateOverride        `json:"templateOverride,omitempty"`
 	SettingsOverride *shared.CommonSettings   `json:"settingsOverride,omitempty"`
 }
 
-// NewChannelOverride 建立通道覆寫設定
+// NewChannelOverride creates a channel override setting.
 func NewChannelOverride() *ChannelOverride {
 	return &ChannelOverride{}
 }
 
-// WithRecipients 設定收件人覆寫
+// WithRecipients sets the recipient override.
 func (c *ChannelOverride) WithRecipients(recipients *channel.Recipients) *ChannelOverride {
 	c.Recipients = recipients
 	return c
 }
 
-// WithTemplateOverride 設定範本覆寫
+// WithTemplateOverride sets the template override.
 func (c *ChannelOverride) WithTemplateOverride(templateOverride *TemplateOverride) *ChannelOverride {
 	c.TemplateOverride = templateOverride
 	return c
 }
 
-// WithSettingsOverride 設定設定覆寫
+// WithSettingsOverride sets the setting override.
 func (c *ChannelOverride) WithSettingsOverride(settingsOverride *shared.CommonSettings) *ChannelOverride {
 	c.SettingsOverride = settingsOverride
 	return c
 }
 
-// HasRecipientsOverride 檢查是否有收件人覆寫
+// HasRecipientsOverride checks if there is a recipient override.
 func (c *ChannelOverride) HasRecipientsOverride() bool {
 	return c.Recipients != nil
 }
 
-// HasTemplateOverride 檢查是否有範本覆寫
+// HasTemplateOverride checks if there is a template override.
 func (c *ChannelOverride) HasTemplateOverride() bool {
 	return c.TemplateOverride != nil
 }
 
-// HasSettingsOverride 檢查是否有設定覆寫
+// HasSettingsOverride checks if there is a setting override.
 func (c *ChannelOverride) HasSettingsOverride() bool {
 	return c.SettingsOverride != nil
 }
 
-// TemplateOverride 範本覆寫
+// TemplateOverride is the template override.
 type TemplateOverride struct {
 	Subject  *template.Subject         `json:"subject,omitempty"`
 	Template *template.TemplateContent `json:"template,omitempty"`
 }
 
-// NewTemplateOverride 建立範本覆寫
+// NewTemplateOverride creates a template override.
 func NewTemplateOverride() *TemplateOverride {
 	return &TemplateOverride{}
 }
 
-// WithSubject 設定主題覆寫
+// WithSubject sets the subject override.
 func (t *TemplateOverride) WithSubject(subject *template.Subject) *TemplateOverride {
 	t.Subject = subject
 	return t
 }
 
-// WithTemplate 設定範本覆寫
+// WithTemplate sets the template override.
 func (t *TemplateOverride) WithTemplate(templateContent *template.TemplateContent) *TemplateOverride {
 	t.Template = templateContent
 	return t
 }
 
-// HasSubjectOverride 檢查是否有主題覆寫
+// HasSubjectOverride checks if there is a subject override.
 func (t *TemplateOverride) HasSubjectOverride() bool {
 	return t.Subject != nil
 }
 
-// HasTemplateOverride 檢查是否有範本覆寫
+// HasTemplateOverride checks if there is a template override.
 func (t *TemplateOverride) HasTemplateOverride() bool {
 	return t.Template != nil
 }
 
-// ChannelOverrides 通道覆寫設定映射
+// ChannelOverrides is the channel override setting map.
 type ChannelOverrides struct {
 	overrides map[string]*ChannelOverride
 }
 
-// NewChannelOverrides 建立通道覆寫設定映射
+// NewChannelOverrides creates a channel override setting map.
 func NewChannelOverrides(overrides map[string]*ChannelOverride) *ChannelOverrides {
 	if overrides == nil {
 		overrides = make(map[string]*ChannelOverride)
@@ -205,18 +205,18 @@ func NewChannelOverrides(overrides map[string]*ChannelOverride) *ChannelOverride
 	return &ChannelOverrides{overrides: overrides}
 }
 
-// Get 取得指定通道的覆寫設定
+// Get gets the override setting for the specified channel.
 func (c *ChannelOverrides) Get(channelID string) (*ChannelOverride, bool) {
 	override, exists := c.overrides[channelID]
 	return override, exists
 }
 
-// Set 設定指定通道的覆寫設定
+// Set sets the override setting for the specified channel.
 func (c *ChannelOverrides) Set(channelID string, override *ChannelOverride) {
 	c.overrides[channelID] = override
 }
 
-// ToMap 轉換為 map
+// ToMap converts to a map.
 func (c *ChannelOverrides) ToMap() map[string]*ChannelOverride {
 	result := make(map[string]*ChannelOverride)
 	for k, v := range c.overrides {
@@ -225,24 +225,24 @@ func (c *ChannelOverrides) ToMap() map[string]*ChannelOverride {
 	return result
 }
 
-// HasOverride 檢查是否有指定通道的覆寫設定
+// HasOverride checks if there is an override setting for the specified channel.
 func (c *ChannelOverrides) HasOverride(channelID string) bool {
 	_, exists := c.overrides[channelID]
 	return exists
 }
 
-// ChannelIDs 通道 ID 列表
+// ChannelIDs is the list of channel IDs.
 type ChannelIDs struct {
 	channelIDs []*channel.ChannelID
 }
 
-// NewChannelIDs 建立通道 ID 列表
+// NewChannelIDs creates a list of channel IDs.
 func NewChannelIDs(channelIDs []*channel.ChannelID) (*ChannelIDs, error) {
 	if len(channelIDs) == 0 {
 		return nil, errors.New("channel IDs cannot be empty")
 	}
 	
-	// 去重
+	// Deduplicate
 	seen := make(map[string]bool)
 	uniqueIDs := make([]*channel.ChannelID, 0)
 	
@@ -260,19 +260,19 @@ func NewChannelIDs(channelIDs []*channel.ChannelID) (*ChannelIDs, error) {
 	return &ChannelIDs{channelIDs: uniqueIDs}, nil
 }
 
-// ToSlice 轉換為切片
+// ToSlice converts to a slice.
 func (c *ChannelIDs) ToSlice() []*channel.ChannelID {
 	result := make([]*channel.ChannelID, len(c.channelIDs))
 	copy(result, c.channelIDs)
 	return result
 }
 
-// Count 取得通道 ID 數量
+// Count gets the number of channel IDs.
 func (c *ChannelIDs) Count() int {
 	return len(c.channelIDs)
 }
 
-// Contains 檢查是否包含指定通道 ID
+// Contains checks if it contains the specified channel ID.
 func (c *ChannelIDs) Contains(channelID *channel.ChannelID) bool {
 	if channelID == nil {
 		return false

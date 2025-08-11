@@ -9,46 +9,46 @@ import (
 	"channel-api/internal/domain/shared"
 )
 
-// ListChannelsUseCase 查詢通道列表用例
+// ListChannelsUseCase is the use case for listing channels.
 type ListChannelsUseCase struct {
 	channelRepo channel.ChannelRepository
 }
 
-// NewListChannelsUseCase 建立用例實例
+// NewListChannelsUseCase creates a use case instance.
 func NewListChannelsUseCase(channelRepo channel.ChannelRepository) *ListChannelsUseCase {
 	return &ListChannelsUseCase{
 		channelRepo: channelRepo,
 	}
 }
 
-// Execute 執行查詢通道列表
+// Execute executes the channel list query.
 func (uc *ListChannelsUseCase) Execute(ctx context.Context, request *dtos.ListChannelsRequest) (*dtos.ListChannelsResponse, error) {
-	// 1. 建立分頁參數
+	// 1. Create pagination parameters
 	pagination, err := uc.createPagination(request)
 	if err != nil {
 		return nil, fmt.Errorf("invalid pagination: %w", err)
 	}
 
-	// 2. 建立過濾條件
+	// 2. Create filter conditions
 	filter := uc.createFilter(request)
 
-	// 3. 查詢資料
+	// 3. Query data
 	result, err := uc.channelRepo.FindAll(ctx, filter, pagination)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list channels: %w", err)
 	}
 
-	// 4. 轉換為回應 DTO
+	// 4. Convert to response DTO
 	response := uc.convertToResponse(result)
 	return response, nil
 }
 
-// createPagination 建立分頁參數
+// createPagination creates pagination parameters.
 func (uc *ListChannelsUseCase) createPagination(request *dtos.ListChannelsRequest) (*shared.Pagination, error) {
 	skipCount := request.SkipCount
 	maxResultCount := request.MaxResultCount
 
-	// 設定預設值
+	// Set default values
 	if skipCount < 0 {
 		skipCount = 0
 	}
@@ -62,11 +62,11 @@ func (uc *ListChannelsUseCase) createPagination(request *dtos.ListChannelsReques
 	return shared.NewPagination(skipCount, maxResultCount)
 }
 
-// createFilter 建立過濾條件
+// createFilter creates filter conditions.
 func (uc *ListChannelsUseCase) createFilter(request *dtos.ListChannelsRequest) *channel.ChannelFilter {
 	filter := channel.NewChannelFilter()
 
-	// 通道類型過濾
+	// Channel type filter
 	if request.ChannelType != "" {
 		channelType := shared.ChannelType(request.ChannelType)
 		if channelType.IsValid() {
@@ -74,7 +74,7 @@ func (uc *ListChannelsUseCase) createFilter(request *dtos.ListChannelsRequest) *
 		}
 	}
 
-	// 標籤過濾
+	// Tag filter
 	if len(request.Tags) > 0 {
 		filter.WithTags(request.Tags)
 	}
@@ -82,7 +82,7 @@ func (uc *ListChannelsUseCase) createFilter(request *dtos.ListChannelsRequest) *
 	return filter
 }
 
-// convertToResponse 轉換為回應 DTO
+// convertToResponse converts to a response DTO.
 func (uc *ListChannelsUseCase) convertToResponse(result *shared.PaginatedResult[*channel.Channel]) *dtos.ListChannelsResponse {
 	items := make([]dtos.ChannelSummaryResponse, 0, len(result.Items))
 

@@ -11,13 +11,13 @@ import (
 	"channel-api/internal/domain/template"
 )
 
-// UpdateChannelUseCase 更新通道用例
+// UpdateChannelUseCase is the use case for updating a channel.
 type UpdateChannelUseCase struct {
 	channelRepo channel.ChannelRepository
 	validator   *services.ChannelValidator
 }
 
-// NewUpdateChannelUseCase 建立用例實例
+// NewUpdateChannelUseCase creates a use case instance.
 func NewUpdateChannelUseCase(
 	channelRepo channel.ChannelRepository,
 	validator *services.ChannelValidator,
@@ -28,14 +28,14 @@ func NewUpdateChannelUseCase(
 	}
 }
 
-// Execute 執行更新通道
+// Execute executes the channel update.
 func (uc *UpdateChannelUseCase) Execute(ctx context.Context, channelID string, request *dtos.UpdateChannelRequest) (*dtos.ChannelResponse, error) {
-	// 1. 驗證輸入參數
+	// 1. Validate input parameters
 	if err := uc.validateRequest(channelID, request); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	// 2. 轉換為領域物件
+	// 2. Convert to domain objects
 	id, err := channel.NewChannelIDFromString(channelID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid channel ID: %w", err)
@@ -46,7 +46,7 @@ func (uc *UpdateChannelUseCase) Execute(ctx context.Context, channelID string, r
 		return nil, fmt.Errorf("failed to convert to domain objects: %w", err)
 	}
 
-	// 3. 業務驗證
+	// 3. Business validation
 	if err := uc.validator.ValidateChannelForUpdate(
 		ctx,
 		id,
@@ -58,18 +58,18 @@ func (uc *UpdateChannelUseCase) Execute(ctx context.Context, channelID string, r
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 4. 查詢現有通道
+	// 4. Query existing channel
 	ch, err := uc.channelRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	// 5. 檢查通道是否已刪除
+	// 5. Check if the channel is deleted
 	if ch.IsDeleted() {
 		return nil, fmt.Errorf("cannot update deleted channel")
 	}
 
-	// 6. 更新通道
+	// 6. Update the channel
 	if err := ch.Update(
 		domainObjects.Name,
 		domainObjects.Description,
@@ -84,17 +84,17 @@ func (uc *UpdateChannelUseCase) Execute(ctx context.Context, channelID string, r
 		return nil, fmt.Errorf("failed to update channel: %w", err)
 	}
 
-	// 7. 持久化
+	// 7. Persist
 	if err := uc.channelRepo.Update(ctx, ch); err != nil {
 		return nil, fmt.Errorf("failed to save channel: %w", err)
 	}
 
-	// 8. 轉換為回應 DTO
+	// 8. Convert to response DTO
 	response := uc.convertToResponse(ch)
 	return response, nil
 }
 
-// validateRequest 驗證請求參數
+// validateRequest validates the request parameters.
 func (uc *UpdateChannelUseCase) validateRequest(channelID string, request *dtos.UpdateChannelRequest) error {
 	if channelID == "" {
 		return fmt.Errorf("channel ID is required")
@@ -115,27 +115,27 @@ func (uc *UpdateChannelUseCase) validateRequest(channelID string, request *dtos.
 	return nil
 }
 
-// convertToDomainObjects 轉換為領域物件
+// convertToDomainObjects converts to domain objects.
 func (uc *UpdateChannelUseCase) convertToDomainObjects(request *dtos.UpdateChannelRequest) (*DomainObjects, error) {
-	// 通道名稱
+	// Channel name
 	name, err := channel.NewChannelName(request.ChannelName)
 	if err != nil {
 		return nil, fmt.Errorf("invalid channel name: %w", err)
 	}
 
-	// 描述
+	// Description
 	description, err := channel.NewDescription(request.Description)
 	if err != nil {
 		return nil, fmt.Errorf("invalid description: %w", err)
 	}
 
-	// 通道類型
+	// Channel type
 	channelType := shared.ChannelType(request.ChannelType)
 	if !channelType.IsValid() {
 		return nil, fmt.Errorf("invalid channel type: %s", request.ChannelType)
 	}
 
-	// 範本 ID
+	// Template ID
 	var templateID *template.TemplateID
 	if request.TemplateID != "" {
 		templateID, err = template.NewTemplateIDFromString(request.TemplateID)
@@ -144,23 +144,23 @@ func (uc *UpdateChannelUseCase) convertToDomainObjects(request *dtos.UpdateChann
 		}
 	}
 
-	// 通用設定
+	// Common settings
 	commonSettings, err := request.CommonSettings.ToCommonSettings()
 	if err != nil {
 		return nil, fmt.Errorf("invalid common settings: %w", err)
 	}
 
-	// 通道配置
+	// Channel configuration
 	config := channel.NewChannelConfig(request.Config)
 
-	// 收件人
+	// Recipients
 	recipientSlice, err := dtos.ToRecipientsSlice(request.Recipients)
 	if err != nil {
 		return nil, fmt.Errorf("invalid recipients: %w", err)
 	}
 	recipients := channel.NewRecipients(recipientSlice)
 
-	// 標籤
+	// Tags
 	tags := channel.NewTags(request.Tags)
 
 	return &DomainObjects{
@@ -175,7 +175,7 @@ func (uc *UpdateChannelUseCase) convertToDomainObjects(request *dtos.UpdateChann
 	}, nil
 }
 
-// convertToResponse 轉換為回應 DTO
+// convertToResponse converts to a response DTO.
 func (uc *UpdateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.ChannelResponse {
 	var templateID string
 	if ch.TemplateID() != nil {

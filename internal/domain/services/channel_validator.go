@@ -10,13 +10,13 @@ import (
 	"channel-api/internal/domain/template"
 )
 
-// ChannelValidator 通道驗證領域服務
+// ChannelValidator is the domain service for channel validation.
 type ChannelValidator struct {
 	channelRepo  channel.ChannelRepository
 	templateRepo template.TemplateRepository
 }
 
-// NewChannelValidator 建立通道驗證服務
+// NewChannelValidator creates a channel validation service.
 func NewChannelValidator(
 	channelRepo channel.ChannelRepository,
 	templateRepo template.TemplateRepository,
@@ -27,21 +27,21 @@ func NewChannelValidator(
 	}
 }
 
-// ValidationError 驗證錯誤
+// ValidationError is a validation error.
 type ValidationError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
 }
 
-// Error 實作 error 介面
+// Error implements the error interface.
 func (ve *ValidationError) Error() string {
 	return fmt.Sprintf("validation error on field '%s': %s", ve.Field, ve.Message)
 }
 
-// ValidationErrors 驗證錯誤列表
+// ValidationErrors is a list of validation errors.
 type ValidationErrors []*ValidationError
 
-// Error 實作 error 介面
+// Error implements the error interface.
 func (ves ValidationErrors) Error() string {
 	if len(ves) == 0 {
 		return "no validation errors"
@@ -52,12 +52,12 @@ func (ves ValidationErrors) Error() string {
 	return fmt.Sprintf("multiple validation errors: %d errors", len(ves))
 }
 
-// HasErrors 檢查是否有錯誤
+// HasErrors checks if there are any errors.
 func (ves ValidationErrors) HasErrors() bool {
 	return len(ves) > 0
 }
 
-// Add 新增驗證錯誤
+// Add adds a validation error.
 func (ves *ValidationErrors) Add(field, message string) {
 	*ves = append(*ves, &ValidationError{
 		Field:   field,
@@ -65,7 +65,7 @@ func (ves *ValidationErrors) Add(field, message string) {
 	})
 }
 
-// ValidateChannelForCreation 驗證通道建立
+// ValidateChannelForCreation validates channel creation.
 func (cv *ChannelValidator) ValidateChannelForCreation(
 	ctx context.Context,
 	name *channel.ChannelName,
@@ -75,17 +75,17 @@ func (cv *ChannelValidator) ValidateChannelForCreation(
 ) error {
 	var errors ValidationErrors
 
-	// 驗證通道名稱唯一性
+	// Validate channel name uniqueness
 	if err := cv.validateChannelNameUniqueness(ctx, name); err != nil {
 		errors.Add("channelName", err.Error())
 	}
 
-	// 驗證範本存在性和類型匹配
+	// Validate template existence and type matching
 	if err := cv.validateTemplateCompatibility(ctx, templateID, channelType); err != nil {
 		errors.Add("templateId", err.Error())
 	}
 
-	// 驗證通道配置
+	// Validate channel configuration
 	if err := cv.validateChannelConfig(channelType, config); err != nil {
 		errors.Add("config", err.Error())
 	}
@@ -97,7 +97,7 @@ func (cv *ChannelValidator) ValidateChannelForCreation(
 	return nil
 }
 
-// ValidateChannelForUpdate 驗證通道更新
+// ValidateChannelForUpdate validates channel update.
 func (cv *ChannelValidator) ValidateChannelForUpdate(
 	ctx context.Context,
 	channelID *channel.ChannelID,
@@ -108,26 +108,26 @@ func (cv *ChannelValidator) ValidateChannelForUpdate(
 ) error {
 	var errors ValidationErrors
 
-	// 檢查通道是否存在
+	// Check if the channel exists
 	existingChannel, err := cv.channelRepo.FindByID(ctx, channelID)
 	if err != nil {
 		errors.Add("channelId", "channel not found")
 		return errors
 	}
 
-	// 驗證通道名稱唯一性 (排除自己)
+	// Validate channel name uniqueness (excluding self)
 	if !existingChannel.Name().Equals(name) {
 		if err := cv.validateChannelNameUniqueness(ctx, name); err != nil {
 			errors.Add("channelName", err.Error())
 		}
 	}
 
-	// 驗證範本存在性和類型匹配
+	// Validate template existence and type matching
 	if err := cv.validateTemplateCompatibility(ctx, templateID, channelType); err != nil {
 		errors.Add("templateId", err.Error())
 	}
 
-	// 驗證通道配置
+	// Validate channel configuration
 	if err := cv.validateChannelConfig(channelType, config); err != nil {
 		errors.Add("config", err.Error())
 	}
@@ -139,7 +139,7 @@ func (cv *ChannelValidator) ValidateChannelForUpdate(
 	return nil
 }
 
-// validateChannelNameUniqueness 驗證通道名稱唯一性
+// validateChannelNameUniqueness validates channel name uniqueness.
 func (cv *ChannelValidator) validateChannelNameUniqueness(ctx context.Context, name *channel.ChannelName) error {
 	exists, err := cv.channelRepo.ExistsByName(ctx, name)
 	if err != nil {
@@ -151,23 +151,23 @@ func (cv *ChannelValidator) validateChannelNameUniqueness(ctx context.Context, n
 	return nil
 }
 
-// validateTemplateCompatibility 驗證範本相容性
+// validateTemplateCompatibility validates template compatibility.
 func (cv *ChannelValidator) validateTemplateCompatibility(
 	ctx context.Context,
 	templateID *template.TemplateID,
 	channelType shared.ChannelType,
 ) error {
 	if templateID == nil {
-		return nil // 範本 ID 可以為空
+		return nil // Template ID can be empty
 	}
 
-	// 檢查範本是否存在
+	// Check if the template exists
 	tmpl, err := cv.templateRepo.FindByID(ctx, templateID)
 	if err != nil {
 		return fmt.Errorf("template not found: %w", err)
 	}
 
-	// 檢查範本類型是否匹配通道類型
+	// Check if the template type matches the channel type
 	if !tmpl.MatchesType(channelType) {
 		return fmt.Errorf("template type '%s' does not match channel type '%s'", 
 			tmpl.ChannelType(), channelType)
@@ -176,7 +176,7 @@ func (cv *ChannelValidator) validateTemplateCompatibility(
 	return nil
 }
 
-// validateChannelConfig 驗證通道配置
+// validateChannelConfig validates channel configuration.
 func (cv *ChannelValidator) validateChannelConfig(channelType shared.ChannelType, config *channel.ChannelConfig) error {
 	if config == nil {
 		return errors.New("channel config is required")
@@ -194,7 +194,7 @@ func (cv *ChannelValidator) validateChannelConfig(channelType shared.ChannelType
 	}
 }
 
-// validateEmailConfig 驗證電子郵件配置
+// validateEmailConfig validates email configuration.
 func (cv *ChannelValidator) validateEmailConfig(config *channel.ChannelConfig) error {
 	requiredFields := []string{"host", "port", "username", "password"}
 	
@@ -204,7 +204,7 @@ func (cv *ChannelValidator) validateEmailConfig(config *channel.ChannelConfig) e
 		}
 	}
 
-	// 驗證 port 是否為有效數字
+	// Validate if port is a valid number
 	if port, exists := config.Get("port"); exists {
 		switch v := port.(type) {
 		case float64:
@@ -223,7 +223,7 @@ func (cv *ChannelValidator) validateEmailConfig(config *channel.ChannelConfig) e
 	return nil
 }
 
-// validateSlackConfig 驗證 Slack 配置
+// validateSlackConfig validates Slack configuration.
 func (cv *ChannelValidator) validateSlackConfig(config *channel.ChannelConfig) error {
 	requiredFields := []string{"token", "workspace"}
 	
@@ -236,7 +236,7 @@ func (cv *ChannelValidator) validateSlackConfig(config *channel.ChannelConfig) e
 	return nil
 }
 
-// validateSMSConfig 驗證簡訊配置
+// validateSMSConfig validates SMS configuration.
 func (cv *ChannelValidator) validateSMSConfig(config *channel.ChannelConfig) error {
 	requiredFields := []string{"provider", "apiKey", "apiSecret"}
 	
@@ -249,23 +249,23 @@ func (cv *ChannelValidator) validateSMSConfig(config *channel.ChannelConfig) err
 	return nil
 }
 
-// ValidateChannelDeletion 驗證通道刪除
+// ValidateChannelDeletion validates channel deletion.
 func (cv *ChannelValidator) ValidateChannelDeletion(ctx context.Context, channelID *channel.ChannelID) error {
-	// 檢查通道是否存在
+	// Check if the channel exists
 	ch, err := cv.channelRepo.FindByID(ctx, channelID)
 	if err != nil {
 		return fmt.Errorf("channel not found: %w", err)
 	}
 
-	// 檢查通道是否已刪除
+	// Check if the channel is already deleted
 	if ch.IsDeleted() {
 		return errors.New("channel is already deleted")
 	}
 
-	// 在實際專案中，這裡可能需要檢查：
-	// 1. 是否有進行中的訊息發送任務
-	// 2. 是否有相依的其他資源
-	// 3. 業務規則限制
+	// In a real project, you may need to check here:
+	// 1. Whether there are ongoing message sending tasks
+	// 2. Whether there are other dependent resources
+	// 3. Business rule restrictions
 
 	return nil
 }

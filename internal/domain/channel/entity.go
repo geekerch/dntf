@@ -107,67 +107,67 @@ func ReconstructChannel(
 	}
 }
 
-// ID 取得通道 ID
+// ID gets the channel ID.
 func (c *Channel) ID() *ChannelID {
 	return c.id
 }
 
-// Name 取得通道名稱
+// Name gets the channel name.
 func (c *Channel) Name() *ChannelName {
 	return c.name
 }
 
-// Description 取得描述
+// Description gets the description.
 func (c *Channel) Description() *Description {
 	return c.description
 }
 
-// IsEnabled 檢查通道是否啟用
+// IsEnabled checks if the channel is enabled.
 func (c *Channel) IsEnabled() bool {
 	return c.enabled
 }
 
-// ChannelType 取得通道類型
+// ChannelType gets the channel type.
 func (c *Channel) ChannelType() shared.ChannelType {
 	return c.channelType
 }
 
-// TemplateID 取得範本 ID
+// TemplateID gets the template ID.
 func (c *Channel) TemplateID() *template.TemplateID {
 	return c.templateID
 }
 
-// CommonSettings 取得通用設定
+// CommonSettings gets the common settings.
 func (c *Channel) CommonSettings() *shared.CommonSettings {
 	return c.commonSettings
 }
 
-// Config 取得通道配置
+// Config gets the channel configuration.
 func (c *Channel) Config() *ChannelConfig {
 	return c.config
 }
 
-// Recipients 取得收件人列表
+// Recipients gets the list of recipients.
 func (c *Channel) Recipients() *Recipients {
 	return c.recipients
 }
 
-// Tags 取得標籤
+// Tags gets the tags.
 func (c *Channel) Tags() *Tags {
 	return c.tags
 }
 
-// Timestamps 取得時間戳記
+// Timestamps gets the timestamps.
 func (c *Channel) Timestamps() *shared.Timestamps {
 	return c.timestamps
 }
 
-// LastUsed 取得最後使用時間
+// LastUsed gets the last used time.
 func (c *Channel) LastUsed() *int64 {
 	return c.lastUsed
 }
 
-// Update 更新通道
+// Update updates the channel.
 func (c *Channel) Update(
 	name *ChannelName,
 	description *Description,
@@ -179,7 +179,7 @@ func (c *Channel) Update(
 	recipients *Recipients,
 	tags *Tags,
 ) error {
-	// 驗證必要欄位
+	// Validate required fields
 	if name == nil {
 		return errors.New("channel name is required")
 	}
@@ -190,7 +190,7 @@ func (c *Channel) Update(
 		return errors.New("common settings is required")
 	}
 
-	// 設定預設值
+	// Set default values
 	if description == nil {
 		description, _ = NewDescription("")
 	}
@@ -204,7 +204,7 @@ func (c *Channel) Update(
 		tags = NewTags(nil)
 	}
 
-	// 更新欄位
+	// Update fields
 	c.name = name
 	c.description = description
 	c.enabled = enabled
@@ -219,26 +219,26 @@ func (c *Channel) Update(
 	return nil
 }
 
-// Enable 啟用通道
+// Enable enables the channel.
 func (c *Channel) Enable() {
 	c.enabled = true
 	c.timestamps.UpdateTimestamp()
 }
 
-// Disable 停用通道
+// Disable disables the channel.
 func (c *Channel) Disable() {
 	c.enabled = false
 	c.timestamps.UpdateTimestamp()
 }
 
-// MarkAsUsed 標記為已使用
+// MarkAsUsed marks the channel as used.
 func (c *Channel) MarkAsUsed() {
 	now := c.timestamps.UpdatedAt
 	c.lastUsed = &now
 	c.timestamps.UpdateTimestamp()
 }
 
-// CanSendMessage 檢查是否可以發送訊息
+// CanSendMessage checks if a message can be sent.
 func (c *Channel) CanSendMessage() error {
 	if c.timestamps.IsDeleted() {
 		return errors.New("channel is deleted")
@@ -252,7 +252,7 @@ func (c *Channel) CanSendMessage() error {
 	return nil
 }
 
-// Delete 軟刪除通道
+// Delete soft deletes the channel.
 func (c *Channel) Delete() error {
 	if c.timestamps.IsDeleted() {
 		return errors.New("channel is already deleted")
@@ -261,22 +261,22 @@ func (c *Channel) Delete() error {
 	return nil
 }
 
-// IsDeleted 檢查通道是否已刪除
+// IsDeleted checks if the channel is deleted.
 func (c *Channel) IsDeleted() bool {
 	return c.timestamps.IsDeleted()
 }
 
-// HasTag 檢查是否包含指定標籤
+// HasTag checks if it contains the specified tag.
 func (c *Channel) HasTag(tag string) bool {
 	return c.tags.Contains(tag)
 }
 
-// HasAnyTag 檢查是否包含任一指定標籤
+// HasAnyTag checks if it contains any of the specified tags.
 func (c *Channel) HasAnyTag(tags []string) bool {
 	return c.tags.ContainsAny(tags)
 }
 
-// MatchesType 檢查通道類型是否匹配
+// MatchesType checks if the channel type matches.
 func (c *Channel) MatchesType(channelType shared.ChannelType) bool {
 	return c.channelType == channelType
 }
