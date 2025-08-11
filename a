@@ -1,0 +1,7 @@
+  1 Presentation Layer                                                                                                │
+│     • RESTful API 處理器 (HTTP handlers)                                                                             │
+│     • NATS 訊息處理器完整實作                                                                                        │
+│     • 中介軟體 (認證、限流、CORS)                                                                                    │
+│  2 Template/Message 應用層                                                                                           │
+│     • Template CRUD Use Cases                                                                                        │
+│     • Message 發送完整流程    
