@@ -5,6 +5,9 @@ import (
 
 	"notification/internal/presentation/http/handlers"
 	"notification/internal/presentation/http/middleware"
+
+	"github.com/swaggo/gin-swagger" // gin-swagger middleware
+	"github.com/swaggo/files" // swagger embed files
 )
 
 // RouterConfig holds the configuration for setting up routes
@@ -120,6 +123,9 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 			})
 		})
 	}
+
+	// Swagger UI
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Handle 404
 	router.NoRoute(middleware.NotFoundHandler())
