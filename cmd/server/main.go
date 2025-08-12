@@ -12,14 +12,14 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
-	notification/internal/application/channel/usecases
-	notification/internal/domain/services
-	notification/internal/infrastructure/external
-	notification/internal/infrastructure/messaging
-	notification/internal/infrastructure/repository
-	notification/pkg/config
-	notification/pkg/database
-	notification/pkg/logger
+	"notification/internal/application/channel/usecases"
+	"notification/internal/domain/services"
+	"notification/internal/infrastructure/external"
+	"notification/internal/infrastructure/messaging"
+	"notification/internal/infrastructure/repository"
+	"notification/pkg/config"
+	"notification/pkg/database"
+	"notification/pkg/logger"
 )
 
 func main() {
@@ -195,7 +195,7 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 // buildHTTPHandler creates HTTP handler (placeholder)
 func buildHTTPHandler(container *Container) http.Handler {
 	mux := http.NewServeMux()
-	
+
 	// Health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -231,7 +231,7 @@ func initializeNATSHandlers(natsClient *messaging.NATSClient, container *Contain
 	// Subscribe to channel management topics
 	subjects := []string{
 		"channel.create",
-		"channel.get", 
+		"channel.get",
 		"channel.list",
 		"channel.update",
 		"channel.delete",
