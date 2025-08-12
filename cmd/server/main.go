@@ -17,6 +17,7 @@ import (
 	"notification/internal/infrastructure/repository"
 	"notification/internal/presentation"
 	"notification/internal/presentation/http/handlers"
+	"notification/internal/presentation/http/middleware"
 	natshandlers "notification/internal/presentation/nats/handlers"
 	"notification/pkg/config"
 	"notification/pkg/database"
@@ -92,12 +93,19 @@ func main() {
 	}
 	natsManager := natshandlers.NewHandlerManager(natsHandlerConfig)
 
+	// Initialize middleware configuration based on environment
+	var middlewareConfig *middleware.MiddlewareConfig
+	// For now, use development config as default
+	// TODO: Add Environment field to config.Config
+	middlewareConfig = middleware.DevelopmentMiddlewareConfig()
+
 	// Initialize presentation layer server
 	serverConfig := &presentation.ServerConfig{
-		HTTPPort:       fmt.Sprintf("%d", cfg.Server.Port),
-		HTTPTimeout:    time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		ChannelHandler: channelHandler,
-		NATSManager:    natsManager,
+		HTTPPort:         fmt.Sprintf("%d", cfg.Server.Port),
+		HTTPTimeout:      time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		ChannelHandler:   channelHandler,
+		NATSManager:      natsManager,
+		MiddlewareConfig: middlewareConfig,
 	}
 	server := presentation.NewServer(serverConfig)
 

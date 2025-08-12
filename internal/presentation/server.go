@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"notification/internal/presentation/http/handlers"
+	"notification/internal/presentation/http/middleware"
 	"notification/internal/presentation/http/routes"
 	natshandlers "notification/internal/presentation/nats/handlers"
 	"notification/pkg/logger"
@@ -33,13 +34,17 @@ type ServerConfig struct {
 	
 	// NATS handler manager
 	NATSManager *natshandlers.HandlerManager
+	
+	// Middleware configuration
+	MiddlewareConfig *middleware.MiddlewareConfig
 }
 
 // NewServer creates a new presentation layer server
 func NewServer(config *ServerConfig) *Server {
 	// Setup HTTP router
 	routerConfig := &routes.RouterConfig{
-		ChannelHandler: config.ChannelHandler,
+		ChannelHandler:   config.ChannelHandler,
+		MiddlewareConfig: config.MiddlewareConfig,
 	}
 	router := routes.SetupRouter(routerConfig)
 

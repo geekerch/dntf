@@ -13,6 +13,9 @@ type RouterConfig struct {
 	// Add other handlers here as they are implemented
 	// TemplateHandler *handlers.TemplateHandler
 	// MessageHandler  *handlers.MessageHandler
+	
+	// Middleware configuration
+	MiddlewareConfig *middleware.MiddlewareConfig
 }
 
 // SetupRouter sets up the main router with all routes and middleware
@@ -22,38 +25,89 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 
 	router := gin.New()
 
-	// Global middleware
-	router.Use(middleware.RequestLogger())
-	router.Use(middleware.RequestID())
-	router.Use(middleware.ErrorHandler())
-	router.Use(middleware.CORS())
-	router.Use(middleware.ResponseFormatter())
+	// Setup middleware using middleware manager
+	middlewareConfig := config.MiddlewareConfig
+	if middlewareConfig == nil {
+		middlewareConfig = middleware.DefaultMiddlewareConfig()
+	}
+	
+	middlewareManager := middleware.NewMiddlewareManager(middlewareConfig)
+	middlewareManager.SetupMiddleware(router)
 
-	// Health check endpoint
+	// Health check endpoint (public)
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "healthy",
 			"service": "notification-api",
+			"version": "1.0.0",
 		})
 	})
 
-	// API v1 routes
-	v1 := router.Group("/api/v1")
+	// Metrics endpoint (public, but could be protected)
+	router.GET("/metrics", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+			"metrics": gin.H{
+				"uptime": "placeholder", // TODO: Implement actual metrics
+			},
+		})
+	})
+
+	// Public API v1 routes (no authentication required)
+	publicV1 := router.Group("/api/v1/public")
+	{
+		// Add public endpoints here if needed
+		publicV1.GET("/info", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"service": "notification-api",
+				"version": "1.0.0",
+				"endpoints": []string{
+					"/api/v1/channels",
+					"/api/v1/templates",
+					"/api/v1/messages",
+				},
+			})
+		})
+	}
+
+	// Protected API v1 routes (authentication required)
+	protectedV1 := router.Group("/api/v1")
+	middlewareManager.SetupProtectedRoutes(protectedV1)
 	{
 		// Channel routes
 		if config.ChannelHandler != nil {
-			SetupChannelRoutes(v1, config.ChannelHandler)
+			SetupChannelRoutes(protectedV1, config.ChannelHandler)
 		}
 
 		// TODO: Add template routes when TemplateHandler is implemented
 		// if config.TemplateHandler != nil {
-		//     SetupTemplateRoutes(v1, config.TemplateHandler)
+		//     SetupTemplateRoutes(protectedV1, config.TemplateHandler)
 		// }
 
 		// TODO: Add message routes when MessageHandler is implemented
 		// if config.MessageHandler != nil {
-		//     SetupMessageRoutes(v1, config.MessageHandler)
+		//     SetupMessageRoutes(protectedV1, config.MessageHandler)
 		// }
+	}
+
+	// Admin routes (additional authentication/authorization)
+	adminV1 := router.Group("/api/v1/admin")
+	middlewareManager.SetupAdminRoutes(adminV1)
+	{
+		// Admin endpoints
+		adminV1.GET("/stats", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"message": "Admin stats endpoint",
+				"user":    c.GetString("auth_user"),
+			})
+		})
+
+		adminV1.GET("/config", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"message": "Admin config endpoint",
+				"user":    c.GetString("auth_user"),
+			})
+		})
 	}
 
 	// Handle 404
