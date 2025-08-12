@@ -3,8 +3,8 @@ package channel
 import (
 	"errors"
 
-	"channel-api/internal/domain/shared"
-	"channel-api/internal/domain/template"
+	"notification/internal/domain/shared"
+	"notification/internal/domain/template"
 )
 
 // Channel represents the channel aggregate root

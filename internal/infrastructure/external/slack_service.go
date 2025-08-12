@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/services"
-	"channel-api/internal/domain/shared"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/services"
+	"notification/internal/domain/shared"
 )
 
 // SlackService implements MessageSender for Slack channel

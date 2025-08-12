@@ -3,8 +3,8 @@ package external
 import (
 	"context"
 
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/services"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/services"
 )
 
 // MessageSender defines the interface for sending messages through different channels

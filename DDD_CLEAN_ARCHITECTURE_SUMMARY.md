@@ -5,7 +5,7 @@
 基於 Channel API 設計文件，我們已經按照 DDD（領域驅動設計）和 Clean Architecture（乾淨架構）原則完成了專案結構拆分。
 
 ```
-channel-api/
+notification/
 ├── go.mod                              # Go 模組檔案
 ├── architecture_design.md              # 架構設計文件
 ├── DDD_CLEAN_ARCHITECTURE_SUMMARY.md   # 本總結文件

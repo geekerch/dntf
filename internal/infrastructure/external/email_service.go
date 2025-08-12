@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/services"
-	"channel-api/internal/domain/shared"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/services"
+	"notification/internal/domain/shared"
 )
 
 // EmailService implements MessageSender for email channel

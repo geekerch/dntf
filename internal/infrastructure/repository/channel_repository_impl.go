@@ -10,9 +10,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/shared"
-	"channel-api/internal/domain/template"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/shared"
+	"notification/internal/domain/template"
 )
 
 // ChannelRepositoryImpl implements channel.ChannelRepository interface

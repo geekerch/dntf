@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"channel-api/internal/application/channel/dtos"
-	"channel-api/internal/domain/channel"
+	"notification/internal/application/channel/dtos"
+	"notification/internal/domain/channel"
 )
 
 // GetChannelUseCase is the use case for getting a single channel.

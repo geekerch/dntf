@@ -12,14 +12,14 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
-	"channel-api/internal/application/channel/usecases"
-	"channel-api/internal/domain/services"
-	"channel-api/internal/infrastructure/external"
-	"channel-api/internal/infrastructure/messaging"
-	"channel-api/internal/infrastructure/repository"
-	"channel-api/pkg/config"
-	"channel-api/pkg/database"
-	"channel-api/pkg/logger"
+	notification/internal/application/channel/usecases
+	notification/internal/domain/services
+	notification/internal/infrastructure/external
+	notification/internal/infrastructure/messaging
+	notification/internal/infrastructure/repository
+	notification/pkg/config
+	notification/pkg/database
+	notification/pkg/logger
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 	}
 	log := logger.GetGlobalLogger()
 
-	log.Info("Starting Channel API server",
+	log.Info("Starting Notification server",
 		zap.String("version", "1.0.0"),
 		zap.String("server_address", cfg.GetServerAddress()))
 
@@ -200,7 +200,7 @@ func buildHTTPHandler(container *Container) http.Handler {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "healthy", "service": "channel-api"}`))
+		w.Write([]byte(`{"status": "healthy", "service": "notification"}`))
 	})
 
 	// Database health check

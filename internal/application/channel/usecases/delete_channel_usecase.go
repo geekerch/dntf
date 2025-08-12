@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"channel-api/internal/application/channel/dtos"
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/services"
+	"notification/internal/application/channel/dtos"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/services"
 )
 
 // DeleteChannelUseCase is the use case for deleting a channel.

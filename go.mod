@@ -1,4 +1,4 @@
-module channel-api
+module notification
 
 go 1.21
 

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"channel-api/internal/application/channel/dtos"
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/services"
-	"channel-api/internal/domain/shared"
-	"channel-api/internal/domain/template"
+	"notification/internal/application/channel/dtos"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/services"
+	"notification/internal/domain/shared"
+	"notification/internal/domain/template"
 )
 
 // CreateChannelUseCase is the use case for creating a channel.

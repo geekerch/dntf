@@ -9,8 +9,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
-	"channel-api/pkg/config"
-	"channel-api/pkg/logger"
+	"notification/pkg/config"
+	"notification/pkg/logger"
 )
 
 // NATSClient wraps NATS connection with additional functionality
@@ -24,7 +24,7 @@ type NATSClient struct {
 func NewNATSClient(cfg *config.NATSConfig, log *logger.Logger) (*NATSClient, error) {
 	// Configure NATS options
 	opts := []nats.Option{
-		nats.Name("channel-api"),
+		nats.Name("notification"),
 		nats.MaxReconnects(cfg.MaxReconnects),
 		nats.ReconnectWait(time.Duration(cfg.ReconnectWait) * time.Second),
 		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {

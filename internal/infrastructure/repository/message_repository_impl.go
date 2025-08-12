@@ -8,8 +8,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/message"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/message"
 )
 
 // MessageRepositoryImpl implements message.MessageRepository interface

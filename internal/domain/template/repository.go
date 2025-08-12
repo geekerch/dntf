@@ -3,7 +3,7 @@ package template
 import (
 	"context"
 
-	"channel-api/internal/domain/shared"
+	"notification/internal/domain/shared"
 )
 
 // TemplateRepository is the interface for the template repository.

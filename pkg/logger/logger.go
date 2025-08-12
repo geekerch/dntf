@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"channel-api/pkg/config"
+	"notification/pkg/config"
 )
 
 // Logger wraps zap.Logger

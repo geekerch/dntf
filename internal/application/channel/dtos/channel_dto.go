@@ -1,8 +1,8 @@
 package dtos
 
 import (
-	"channel-api/internal/domain/shared"
-	"channel-api/internal/domain/channel"
+	"notification/internal/domain/shared"
+	"notification/internal/domain/channel"
 )
 
 // CreateChannelRequest is the DTO for creating a channel.

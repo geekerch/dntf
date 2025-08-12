@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/message"
-	"channel-api/internal/domain/template"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/message"
+	"notification/internal/domain/template"
 )
 
 // MessageSender is the domain service for sending messages.

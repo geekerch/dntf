@@ -11,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
-	"channel-api/pkg/config"
+	"notification/pkg/config"
 )
 
 // PostgresDB wraps sqlx.DB with additional functionality

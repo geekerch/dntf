@@ -3,7 +3,7 @@ package channel
 import (
 	"context"
 
-	"channel-api/internal/domain/shared"
+	"notification/internal/domain/shared"
 )
 
 // ChannelRepository is the interface for the channel repository.

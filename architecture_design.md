@@ -103,7 +103,7 @@
 ## 專案目錄結構
 
 ```
-channel-api/
+notification/
 ├── cmd/
 │   └── server/
 │       └── main.go

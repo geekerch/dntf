@@ -9,8 +9,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
-	"channel-api/internal/domain/shared"
-	"channel-api/internal/domain/template"
+	"notification/internal/domain/shared"
+	"notification/internal/domain/template"
 )
 
 // TemplateRepositoryImpl implements template.TemplateRepository interface

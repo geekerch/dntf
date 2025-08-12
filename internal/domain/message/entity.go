@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"channel-api/internal/domain/channel"
+	"notification/internal/domain/channel"
 )
 
 // Message is the aggregate root for messages.

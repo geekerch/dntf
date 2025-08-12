@@ -7,10 +7,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"channel-api/internal/domain/channel"
-	"channel-api/internal/domain/message"
-	"channel-api/internal/domain/template"
-	"channel-api/pkg/logger"
+	"notification/internal/domain/channel"
+	"notification/internal/domain/message"
+	"notification/internal/domain/template"
+	"notification/pkg/logger"
 )
 
 // ExternalNotificationService defines the interface for external notification service

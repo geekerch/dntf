@@ -3,7 +3,7 @@ package template
 import (
 	"errors"
 
-	"channel-api/internal/domain/shared"
+	"notification/internal/domain/shared"
 )
 
 // Template is the aggregate root for templates.
