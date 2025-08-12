@@ -176,6 +176,11 @@ func (c *NATSClient) GetStats() nats.Statistics {
 	return c.conn.Stats()
 }
 
+// GetConnection returns the underlying NATS connection
+func (c *NATSClient) GetConnection() *nats.Conn {
+	return c.conn
+}
+
 // getFullSubject prepends the subject prefix to the subject
 func (c *NATSClient) getFullSubject(subject string) string {
 	if c.config.SubjectPrefix == "" {

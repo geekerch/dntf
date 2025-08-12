@@ -50,7 +50,7 @@ type NotificationService interface {
 	SendNotification(ctx context.Context, requests []*SendRequest) ([]*SendResult, error)
 	
 	// SendSingleNotification sends a notification through a single channel
-	SendSingleNotification(ctx context.Context, request *SendRequest) (*SendResult, error)
+	SendSingleNotification(ctx context.Context, request *SendRequest) *SendResult
 	
 	// ValidateChannel validates if a channel can be used for sending
 	ValidateChannel(ch *channel.Channel) error
