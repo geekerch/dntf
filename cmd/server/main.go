@@ -11,6 +11,8 @@ import (
 	"go.uber.org/zap"
 
 	"notification/internal/application/channel/usecases"
+	"notification/internal/application/cqrs"
+	channelcqrs "notification/internal/application/cqrs/channel"
 	"notification/internal/domain/services"
 	"notification/internal/infrastructure/external"
 	"notification/internal/infrastructure/messaging"
@@ -73,7 +75,7 @@ func main() {
 	// Build dependency container
 	container := buildContainer(db, natsClient, log, cfg)
 
-	// Initialize HTTP handlers
+	// Initialize HTTP handlers (both traditional and CQRS)
 	channelHandler := handlers.NewChannelHandler(
 		container.CreateChannelUseCase,
 		container.GetChannelUseCase,
@@ -82,7 +84,10 @@ func main() {
 		container.DeleteChannelUseCase,
 	)
 
-	// Initialize NATS handler manager
+	// Initialize CQRS HTTP handler
+	cqrsChannelHandler := handlers.NewCQRSChannelHandler(container.CQRSFacade)
+
+	// Initialize NATS handler manager (traditional)
 	natsHandlerConfig := &natshandlers.HandlerConfig{
 		NATSConn:             natsClient.GetConnection(),
 		CreateChannelUseCase: container.CreateChannelUseCase,
@@ -93,6 +98,9 @@ func main() {
 	}
 	natsManager := natshandlers.NewHandlerManager(natsHandlerConfig)
 
+	// Initialize CQRS NATS handler
+	cqrsNatsHandler := natshandlers.NewCQRSChannelNATSHandler(container.CQRSFacade, natsClient.GetConnection())
+
 	// Initialize middleware configuration based on environment
 	var middlewareConfig *middleware.MiddlewareConfig
 	// For now, use development config as default
@@ -101,11 +109,13 @@ func main() {
 
 	// Initialize presentation layer server
 	serverConfig := &presentation.ServerConfig{
-		HTTPPort:         fmt.Sprintf("%d", cfg.Server.Port),
-		HTTPTimeout:      time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		ChannelHandler:   channelHandler,
-		NATSManager:      natsManager,
-		MiddlewareConfig: middlewareConfig,
+		HTTPPort:           fmt.Sprintf("%d", cfg.Server.Port),
+		HTTPTimeout:        time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		ChannelHandler:     channelHandler,
+		CQRSChannelHandler: cqrsChannelHandler,
+		NATSManager:        natsManager,
+		CQRSNATSHandler:    cqrsNatsHandler,
+		MiddlewareConfig:   middlewareConfig,
 	}
 	server := presentation.NewServer(serverConfig)
 
@@ -153,6 +163,10 @@ type Container struct {
 	UpdateChannelUseCase *usecases.UpdateChannelUseCase
 	DeleteChannelUseCase *usecases.DeleteChannelUseCase
 
+	// CQRS Components
+	CQRSManager *cqrs.CQRSManager
+	CQRSFacade  *cqrs.CQRSFacade
+
 	// Infrastructure
 	NATSClient *messaging.NATSClient
 	Logger     *logger.Logger
@@ -190,6 +204,52 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 	updateChannelUseCase := usecases.NewUpdateChannelUseCase(channelRepo, channelValidator)
 	deleteChannelUseCase := usecases.NewDeleteChannelUseCase(channelRepo, channelValidator)
 
+	// Initialize CQRS system
+	cqrsManager := cqrs.NewCQRSManager()
+	cqrsConfig := cqrs.DefaultCQRSConfig()
+	cqrsFacade := cqrs.NewCQRSFacade(cqrsManager, cqrsConfig)
+
+	// Initialize CQRS handlers
+	channelCommandHandlers := channelcqrs.NewChannelCommandHandlers(
+		createChannelUseCase,
+		updateChannelUseCase,
+		deleteChannelUseCase,
+		cqrsManager.GetEventBus(),
+	)
+
+	channelQueryHandlers := channelcqrs.NewChannelQueryHandlers(
+		getChannelUseCase,
+		listChannelsUseCase,
+	)
+
+	// Register CQRS command handlers
+	createCommandHandler := channelcqrs.NewCreateChannelCommandHandler(channelCommandHandlers)
+	updateCommandHandler := channelcqrs.NewUpdateChannelCommandHandler(channelCommandHandlers)
+	deleteCommandHandler := channelcqrs.NewDeleteChannelCommandHandler(channelCommandHandlers)
+
+	if err := cqrsManager.RegisterCommandHandler(createCommandHandler); err != nil {
+		log.Fatal("Failed to register create channel command handler", zap.Error(err))
+	}
+	if err := cqrsManager.RegisterCommandHandler(updateCommandHandler); err != nil {
+		log.Fatal("Failed to register update channel command handler", zap.Error(err))
+	}
+	if err := cqrsManager.RegisterCommandHandler(deleteCommandHandler); err != nil {
+		log.Fatal("Failed to register delete channel command handler", zap.Error(err))
+	}
+
+	// Register CQRS query handlers
+	getQueryHandler := channelcqrs.NewGetChannelQueryHandler(channelQueryHandlers)
+	listQueryHandler := channelcqrs.NewListChannelsQueryHandler(channelQueryHandlers)
+
+	if err := cqrsManager.RegisterQueryHandler(getQueryHandler); err != nil {
+		log.Fatal("Failed to register get channel query handler", zap.Error(err))
+	}
+	if err := cqrsManager.RegisterQueryHandler(listQueryHandler); err != nil {
+		log.Fatal("Failed to register list channels query handler", zap.Error(err))
+	}
+
+	log.Info("CQRS handlers registered successfully")
+
 	return &Container{
 		// Repositories
 		ChannelRepo:  *channelRepo,
@@ -208,6 +268,10 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 		ListChannelsUseCase:  listChannelsUseCase,
 		UpdateChannelUseCase: updateChannelUseCase,
 		DeleteChannelUseCase: deleteChannelUseCase,
+
+		// CQRS Components
+		CQRSManager: cqrsManager,
+		CQRSFacade:  cqrsFacade,
 
 		// Infrastructure
 		NATSClient: natsClient,

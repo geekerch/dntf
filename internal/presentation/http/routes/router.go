@@ -9,7 +9,8 @@ import (
 
 // RouterConfig holds the configuration for setting up routes
 type RouterConfig struct {
-	ChannelHandler *handlers.ChannelHandler
+	ChannelHandler     *handlers.ChannelHandler
+	CQRSChannelHandler *handlers.CQRSChannelHandler
 	// Add other handlers here as they are implemented
 	// TemplateHandler *handlers.TemplateHandler
 	// MessageHandler  *handlers.MessageHandler
@@ -74,7 +75,7 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 	protectedV1 := router.Group("/api/v1")
 	middlewareManager.SetupProtectedRoutes(protectedV1)
 	{
-		// Channel routes
+		// Traditional Channel routes
 		if config.ChannelHandler != nil {
 			SetupChannelRoutes(protectedV1, config.ChannelHandler)
 		}
@@ -88,6 +89,16 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 		// if config.MessageHandler != nil {
 		//     SetupMessageRoutes(protectedV1, config.MessageHandler)
 		// }
+	}
+
+	// CQRS API v2 routes (using CQRS pattern)
+	cqrsV2 := router.Group("/api/v2")
+	middlewareManager.SetupProtectedRoutes(cqrsV2)
+	{
+		// CQRS Channel routes
+		if config.CQRSChannelHandler != nil {
+			SetupCQRSChannelRoutes(cqrsV2, config.CQRSChannelHandler)
+		}
 	}
 
 	// Admin routes (additional authentication/authorization)

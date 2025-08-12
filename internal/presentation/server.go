@@ -30,10 +30,12 @@ type ServerConfig struct {
 	HTTPTimeout time.Duration
 	
 	// HTTP handlers
-	ChannelHandler *handlers.ChannelHandler
+	ChannelHandler     *handlers.ChannelHandler
+	CQRSChannelHandler *handlers.CQRSChannelHandler
 	
 	// NATS handler manager
-	NATSManager *natshandlers.HandlerManager
+	NATSManager     *natshandlers.HandlerManager
+	CQRSNATSHandler *natshandlers.CQRSChannelNATSHandler
 	
 	// Middleware configuration
 	MiddlewareConfig *middleware.MiddlewareConfig
@@ -43,8 +45,9 @@ type ServerConfig struct {
 func NewServer(config *ServerConfig) *Server {
 	// Setup HTTP router
 	routerConfig := &routes.RouterConfig{
-		ChannelHandler:   config.ChannelHandler,
-		MiddlewareConfig: config.MiddlewareConfig,
+		ChannelHandler:     config.ChannelHandler,
+		CQRSChannelHandler: config.CQRSChannelHandler,
+		MiddlewareConfig:   config.MiddlewareConfig,
 	}
 	router := routes.SetupRouter(routerConfig)
 
@@ -74,7 +77,15 @@ func (s *Server) Start(ctx context.Context) error {
 		if err := s.natsManager.RegisterAllHandlers(); err != nil {
 			return fmt.Errorf("failed to register NATS handlers: %w", err)
 		}
-		logger.Info("NATS handlers registered successfully")
+		logger.Info("Traditional NATS handlers registered successfully")
+	}
+
+	// Register CQRS NATS handlers
+	if s.config.CQRSNATSHandler != nil {
+		if err := s.config.CQRSNATSHandler.RegisterHandlers(); err != nil {
+			return fmt.Errorf("failed to register CQRS NATS handlers: %w", err)
+		}
+		logger.Info("CQRS NATS handlers registered successfully")
 	}
 
 	// Start HTTP server in a goroutine
