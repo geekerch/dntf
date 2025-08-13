@@ -32,6 +32,12 @@ type ServerConfig struct {
 	// HTTP handlers
 	ChannelHandler     *handlers.ChannelHandler
 	CQRSChannelHandler *handlers.CQRSChannelHandler
+	TemplateHandler    *handlers.TemplateHandler
+	MessageHandler     *handlers.MessageHandler
+	
+	// CQRS handlers
+	CQRSTemplateHandler *handlers.CQRSTemplateHandler
+	CQRSMessageHandler  *handlers.CQRSMessageHandler
 	
 	// NATS handler manager
 	NATSManager     *natshandlers.HandlerManager
@@ -47,6 +53,10 @@ func NewServer(config *ServerConfig) *Server {
 	routerConfig := &routes.RouterConfig{
 		ChannelHandler:     config.ChannelHandler,
 		CQRSChannelHandler: config.CQRSChannelHandler,
+		TemplateHandler:    config.TemplateHandler,
+		MessageHandler:     config.MessageHandler,
+		CQRSTemplateHandler: config.CQRSTemplateHandler,
+		CQRSMessageHandler:  config.CQRSMessageHandler,
 		MiddlewareConfig:   config.MiddlewareConfig,
 	}
 	router := routes.SetupRouter(routerConfig)

@@ -14,9 +14,12 @@ import (
 type RouterConfig struct {
 	ChannelHandler     *handlers.ChannelHandler
 	CQRSChannelHandler *handlers.CQRSChannelHandler
-	// Add other handlers here as they are implemented
-	// TemplateHandler *handlers.TemplateHandler
-	// MessageHandler  *handlers.MessageHandler
+	TemplateHandler    *handlers.TemplateHandler
+	MessageHandler     *handlers.MessageHandler
+	
+	// CQRS handlers
+	CQRSTemplateHandler *handlers.CQRSTemplateHandler
+	CQRSMessageHandler  *handlers.CQRSMessageHandler
 	
 	// Middleware configuration
 	MiddlewareConfig *middleware.MiddlewareConfig
@@ -67,8 +70,11 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 				"version": "1.0.0",
 				"endpoints": []string{
 					"/api/v1/channels",
-					"/api/v1/templates",
+					"/api/v1/templates", 
 					"/api/v1/messages",
+					"/api/v2/channels (CQRS)",
+					"/api/v2/templates (CQRS)",
+					"/api/v2/messages (CQRS)",
 				},
 			})
 		})
@@ -83,15 +89,15 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 			SetupChannelRoutes(protectedV1, config.ChannelHandler)
 		}
 
-		// TODO: Add template routes when TemplateHandler is implemented
-		// if config.TemplateHandler != nil {
-		//     SetupTemplateRoutes(protectedV1, config.TemplateHandler)
-		// }
+		// Template routes
+		if config.TemplateHandler != nil {
+			SetupTemplateRoutes(protectedV1, config.TemplateHandler)
+		}
 
-		// TODO: Add message routes when MessageHandler is implemented
-		// if config.MessageHandler != nil {
-		//     SetupMessageRoutes(protectedV1, config.MessageHandler)
-		// }
+		// Message routes
+		if config.MessageHandler != nil {
+			SetupMessageRoutes(protectedV1, config.MessageHandler)
+		}
 	}
 
 	// CQRS API v2 routes (using CQRS pattern)
@@ -101,6 +107,16 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 		// CQRS Channel routes
 		if config.CQRSChannelHandler != nil {
 			SetupCQRSChannelRoutes(cqrsV2, config.CQRSChannelHandler)
+		}
+		
+		// CQRS Template routes
+		if config.CQRSTemplateHandler != nil {
+			SetupCQRSTemplateRoutes(cqrsV2, config.CQRSTemplateHandler)
+		}
+		
+		// CQRS Message routes
+		if config.CQRSMessageHandler != nil {
+			SetupCQRSMessageRoutes(cqrsV2, config.CQRSMessageHandler)
 		}
 	}
 

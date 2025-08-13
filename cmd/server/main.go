@@ -26,8 +26,12 @@ import (
 	"go.uber.org/zap"
 
 	"notification/internal/application/channel/usecases"
+	templateusecases "notification/internal/application/template/usecases"
+	messageusecases "notification/internal/application/message/usecases"
 	"notification/internal/application/cqrs"
 	channelcqrs "notification/internal/application/cqrs/channel"
+	templatecqrs "notification/internal/application/cqrs/template"
+	messagecqrs "notification/internal/application/cqrs/message"
 	"notification/internal/domain/services"
 	"notification/internal/infrastructure/external"
 	"notification/internal/infrastructure/messaging"
@@ -76,7 +80,8 @@ func main() {
 		zap.String("database", cfg.Database.DBName))
 
 	// Run database migrations
-	if err := db.RunMigrations("./migrations"); err != nil {
+	// if err := db.RunMigrations("./migrations"); err != nil {
+	if err := db.RunMigrations("../../migrations"); err != nil {
 		log.Fatal("Failed to run database migrations", zap.Error(err))
 	}
 	log.Info("Database migrations completed successfully")
@@ -102,8 +107,25 @@ func main() {
 		container.DeleteChannelUseCase,
 	)
 
-	// Initialize CQRS HTTP handler
+	// Initialize template HTTP handler
+	templateHandler := handlers.NewTemplateHandler(
+		container.CreateTemplateUseCase,
+		container.GetTemplateUseCase,
+		container.ListTemplatesUseCase,
+		container.UpdateTemplateUseCase,
+		container.DeleteTemplateUseCase,
+	)
+
+	// Initialize message HTTP handler
+	messageHandler := handlers.NewMessageHandler(
+		container.SendMessageUseCase,
+		container.GetMessageUseCase,
+	)
+
+	// Initialize CQRS HTTP handlers
 	cqrsChannelHandler := handlers.NewCQRSChannelHandler(container.CQRSFacade)
+	cqrsTemplateHandler := handlers.NewCQRSTemplateHandler(container.CQRSFacade)
+	cqrsMessageHandler := handlers.NewCQRSMessageHandler(container.CQRSFacade)
 
 	// Initialize NATS handler manager (traditional)
 	natsHandlerConfig := &natshandlers.HandlerConfig{
@@ -131,6 +153,10 @@ func main() {
 		HTTPTimeout:        time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		ChannelHandler:     channelHandler,
 		CQRSChannelHandler: cqrsChannelHandler,
+		TemplateHandler:    templateHandler,
+		MessageHandler:     messageHandler,
+		CQRSTemplateHandler: cqrsTemplateHandler,
+		CQRSMessageHandler:  cqrsMessageHandler,
 		NATSManager:        natsManager,
 		CQRSNATSHandler:    cqrsNatsHandler,
 		MiddlewareConfig:   middlewareConfig,
@@ -174,12 +200,23 @@ type Container struct {
 	TemplateRenderer    *services.DefaultTemplateRenderer
 	NotificationService *external.DefaultNotificationService
 
-	// Use Cases
+	// Use Cases - Channel
 	CreateChannelUseCase *usecases.CreateChannelUseCase
 	GetChannelUseCase    *usecases.GetChannelUseCase
 	ListChannelsUseCase  *usecases.ListChannelsUseCase
 	UpdateChannelUseCase *usecases.UpdateChannelUseCase
 	DeleteChannelUseCase *usecases.DeleteChannelUseCase
+
+	// Use Cases - Template
+	CreateTemplateUseCase *templateusecases.CreateTemplateUseCase
+	GetTemplateUseCase    *templateusecases.GetTemplateUseCase
+	ListTemplatesUseCase  *templateusecases.ListTemplatesUseCase
+	UpdateTemplateUseCase *templateusecases.UpdateTemplateUseCase
+	DeleteTemplateUseCase *templateusecases.DeleteTemplateUseCase
+
+	// Use Cases - Message
+	SendMessageUseCase *messageusecases.SendMessageUseCase
+	GetMessageUseCase  *messageusecases.GetMessageUseCase
 
 	// CQRS Components
 	CQRSManager *cqrs.CQRSManager
@@ -215,12 +252,23 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 		log,
 	)
 
-	// Initialize use cases
+	// Initialize channel use cases
 	createChannelUseCase := usecases.NewCreateChannelUseCase(channelRepo, channelValidator)
 	getChannelUseCase := usecases.NewGetChannelUseCase(channelRepo)
 	listChannelsUseCase := usecases.NewListChannelsUseCase(channelRepo)
 	updateChannelUseCase := usecases.NewUpdateChannelUseCase(channelRepo, channelValidator)
 	deleteChannelUseCase := usecases.NewDeleteChannelUseCase(channelRepo, channelValidator)
+
+	// Initialize template use cases
+	createTemplateUseCase := templateusecases.NewCreateTemplateUseCase(templateRepo)
+	getTemplateUseCase := templateusecases.NewGetTemplateUseCase(templateRepo)
+	listTemplatesUseCase := templateusecases.NewListTemplatesUseCase(templateRepo)
+	updateTemplateUseCase := templateusecases.NewUpdateTemplateUseCase(templateRepo)
+	deleteTemplateUseCase := templateusecases.NewDeleteTemplateUseCase(templateRepo)
+
+	// Initialize message use cases
+	sendMessageUseCase := messageusecases.NewSendMessageUseCase(messageRepo, channelRepo, templateRepo, messageSender)
+	getMessageUseCase := messageusecases.NewGetMessageUseCase(messageRepo)
 
 	// Initialize CQRS system
 	cqrsManager := cqrs.NewCQRSManager()
@@ -266,6 +314,69 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 		log.Fatal("Failed to register list channels query handler", zap.Error(err))
 	}
 
+	// Initialize template CQRS handlers
+	templateCommandHandlers := templatecqrs.NewTemplateCommandHandlers(
+		createTemplateUseCase,
+		updateTemplateUseCase,
+		deleteTemplateUseCase,
+		cqrsManager.GetEventBus(),
+	)
+
+	templateQueryHandlers := templatecqrs.NewTemplateQueryHandlers(
+		getTemplateUseCase,
+		listTemplatesUseCase,
+	)
+
+	// Register template CQRS command handlers
+	createTemplateCommandHandler := templatecqrs.NewCreateTemplateCommandHandler(templateCommandHandlers)
+	updateTemplateCommandHandler := templatecqrs.NewUpdateTemplateCommandHandler(templateCommandHandlers)
+	deleteTemplateCommandHandler := templatecqrs.NewDeleteTemplateCommandHandler(templateCommandHandlers)
+
+	if err := cqrsManager.RegisterCommandHandler(createTemplateCommandHandler); err != nil {
+		log.Fatal("Failed to register create template command handler", zap.Error(err))
+	}
+	if err := cqrsManager.RegisterCommandHandler(updateTemplateCommandHandler); err != nil {
+		log.Fatal("Failed to register update template command handler", zap.Error(err))
+	}
+	if err := cqrsManager.RegisterCommandHandler(deleteTemplateCommandHandler); err != nil {
+		log.Fatal("Failed to register delete template command handler", zap.Error(err))
+	}
+
+	// Register template CQRS query handlers
+	getTemplateQueryHandler := templatecqrs.NewGetTemplateQueryHandler(templateQueryHandlers)
+	listTemplatesQueryHandler := templatecqrs.NewListTemplatesQueryHandler(templateQueryHandlers)
+
+	if err := cqrsManager.RegisterQueryHandler(getTemplateQueryHandler); err != nil {
+		log.Fatal("Failed to register get template query handler", zap.Error(err))
+	}
+	if err := cqrsManager.RegisterQueryHandler(listTemplatesQueryHandler); err != nil {
+		log.Fatal("Failed to register list templates query handler", zap.Error(err))
+	}
+
+	// Initialize message CQRS handlers
+	messageCommandHandlers := messagecqrs.NewMessageCommandHandlers(
+		sendMessageUseCase,
+		cqrsManager.GetEventBus(),
+	)
+
+	messageQueryHandlers := messagecqrs.NewMessageQueryHandlers(
+		getMessageUseCase,
+	)
+
+	// Register message CQRS command handlers
+	sendMessageCommandHandler := messagecqrs.NewSendMessageCommandHandler(messageCommandHandlers)
+
+	if err := cqrsManager.RegisterCommandHandler(sendMessageCommandHandler); err != nil {
+		log.Fatal("Failed to register send message command handler", zap.Error(err))
+	}
+
+	// Register message CQRS query handlers
+	getMessageQueryHandler := messagecqrs.NewGetMessageQueryHandler(messageQueryHandlers)
+
+	if err := cqrsManager.RegisterQueryHandler(getMessageQueryHandler); err != nil {
+		log.Fatal("Failed to register get message query handler", zap.Error(err))
+	}
+
 	log.Info("CQRS handlers registered successfully")
 
 	return &Container{
@@ -280,12 +391,23 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 		TemplateRenderer:    templateRenderer,
 		NotificationService: notificationService,
 
-		// Use Cases
+		// Use Cases - Channel
 		CreateChannelUseCase: createChannelUseCase,
 		GetChannelUseCase:    getChannelUseCase,
 		ListChannelsUseCase:  listChannelsUseCase,
 		UpdateChannelUseCase: updateChannelUseCase,
 		DeleteChannelUseCase: deleteChannelUseCase,
+
+		// Use Cases - Template
+		CreateTemplateUseCase: createTemplateUseCase,
+		GetTemplateUseCase:    getTemplateUseCase,
+		ListTemplatesUseCase:  listTemplatesUseCase,
+		UpdateTemplateUseCase: updateTemplateUseCase,
+		DeleteTemplateUseCase: deleteTemplateUseCase,
+
+		// Use Cases - Message
+		SendMessageUseCase: sendMessageUseCase,
+		GetMessageUseCase:  getMessageUseCase,
 
 		// CQRS Components
 		CQRSManager: cqrsManager,
@@ -297,4 +419,3 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 		Config:     cfg,
 	}
 }
-
