@@ -53,15 +53,18 @@ func (h *MessageCommandHandlers) HandleSendMessage(ctx context.Context, cmd *Sen
 
 // MessageQueryHandlers handles message queries
 type MessageQueryHandlers struct {
-	getMessageUC *usecases.GetMessageUseCase
+	getMessageUC  *usecases.GetMessageUseCase
+	listMessagesUC *usecases.ListMessagesUseCase
 }
 
 // NewMessageQueryHandlers creates a new message query handlers
 func NewMessageQueryHandlers(
 	getMessageUC *usecases.GetMessageUseCase,
+	listMessagesUC *usecases.ListMessagesUseCase,
 ) *MessageQueryHandlers {
 	return &MessageQueryHandlers{
-		getMessageUC: getMessageUC,
+		getMessageUC:   getMessageUC,
+		listMessagesUC: listMessagesUC,
 	}
 }
 
@@ -70,6 +73,28 @@ func (h *MessageQueryHandlers) HandleGetMessage(ctx context.Context, query *GetM
 	response, err := h.getMessageUC.Execute(ctx, query.MessageID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get message: %w", err)
+	}
+
+	return response, nil
+}
+
+// HandleListMessages handles list messages query
+func (h *MessageQueryHandlers) HandleListMessages(ctx context.Context, query *ListMessagesQuery) (*dtos.ListMessagesResponse, error) {
+	// Convert CQRS query to use case request
+	request := &dtos.ListMessagesRequest{
+		ChannelID: query.ChannelID,
+		Status:    query.Status,
+	}
+	
+	// Set pagination if provided
+	if query.Options != nil && query.Options.Pagination != nil {
+		request.SkipCount = query.Options.Pagination.Offset
+		request.MaxResultCount = query.Options.Pagination.Limit
+	}
+
+	response, err := h.listMessagesUC.Execute(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list messages: %w", err)
 	}
 
 	return response, nil
@@ -141,4 +166,36 @@ func (h *GetMessageQueryHandler) Handle(ctx context.Context, query cqrs.Query) (
 // GetQueryType returns the query type this handler supports
 func (h *GetMessageQueryHandler) GetQueryType() string {
 	return GetMessageQueryType
+}
+
+// ListMessagesQueryHandler handles list messages queries
+type ListMessagesQueryHandler struct {
+	handlers *MessageQueryHandlers
+}
+
+// NewListMessagesQueryHandler creates a new list messages query handler
+func NewListMessagesQueryHandler(handlers *MessageQueryHandlers) *ListMessagesQueryHandler {
+	return &ListMessagesQueryHandler{
+		handlers: handlers,
+	}
+}
+
+// Handle handles the list messages query
+func (h *ListMessagesQueryHandler) Handle(ctx context.Context, query cqrs.Query) (*cqrs.QueryResult, error) {
+	listQuery, ok := query.(*ListMessagesQuery)
+	if !ok {
+		return nil, fmt.Errorf("invalid query type")
+	}
+
+	response, err := h.handlers.HandleListMessages(ctx, listQuery)
+	if err != nil {
+		return &cqrs.QueryResult{Success: false, Error: err}, err
+	}
+
+	return &cqrs.QueryResult{Success: true, Data: response}, nil
+}
+
+// GetQueryType returns the query type this handler supports
+func (h *ListMessagesQueryHandler) GetQueryType() string {
+	return ListMessagesQueryType
 }

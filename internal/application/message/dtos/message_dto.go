@@ -17,6 +17,23 @@ type SendMessageRequest struct {
 	Settings         *shared.CommonSettings     `json:"settings,omitempty"`
 }
 
+// ListMessagesRequest represents the request to list messages.
+type ListMessagesRequest struct {
+	ChannelID      string `json:"channelId,omitempty"`
+	Status         string `json:"status,omitempty"`
+	SkipCount      int    `json:"skipCount,omitempty"`
+	MaxResultCount int    `json:"maxResultCount,omitempty"`
+}
+
+// ListMessagesResponse represents the response for listing messages.
+type ListMessagesResponse struct {
+	Items          []*MessageResponse `json:"items"`
+	SkipCount      int                `json:"skipCount"`
+	MaxResultCount int                `json:"maxResultCount"`
+	TotalCount     int                `json:"totalCount"`
+	HasMore        bool               `json:"hasMore"`
+}
+
 // MessageResponse represents the response for a message.
 type MessageResponse struct {
 	ID               string                     `json:"id"`

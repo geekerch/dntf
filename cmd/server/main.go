@@ -215,8 +215,9 @@ type Container struct {
 	DeleteTemplateUseCase *templateusecases.DeleteTemplateUseCase
 
 	// Use Cases - Message
-	SendMessageUseCase *messageusecases.SendMessageUseCase
-	GetMessageUseCase  *messageusecases.GetMessageUseCase
+	SendMessageUseCase  *messageusecases.SendMessageUseCase
+	GetMessageUseCase   *messageusecases.GetMessageUseCase
+	ListMessagesUseCase *messageusecases.ListMessagesUseCase
 
 	// CQRS Components
 	CQRSManager *cqrs.CQRSManager
@@ -269,6 +270,7 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 	// Initialize message use cases
 	sendMessageUseCase := messageusecases.NewSendMessageUseCase(messageRepo, channelRepo, templateRepo, messageSender)
 	getMessageUseCase := messageusecases.NewGetMessageUseCase(messageRepo)
+	listMessagesUseCase := messageusecases.NewListMessagesUseCase(messageRepo)
 
 	// Initialize CQRS system
 	cqrsManager := cqrs.NewCQRSManager()
@@ -361,6 +363,7 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 
 	messageQueryHandlers := messagecqrs.NewMessageQueryHandlers(
 		getMessageUseCase,
+		listMessagesUseCase,
 	)
 
 	// Register message CQRS command handlers
@@ -372,9 +375,13 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 
 	// Register message CQRS query handlers
 	getMessageQueryHandler := messagecqrs.NewGetMessageQueryHandler(messageQueryHandlers)
+	listMessagesQueryHandler := messagecqrs.NewListMessagesQueryHandler(messageQueryHandlers)
 
 	if err := cqrsManager.RegisterQueryHandler(getMessageQueryHandler); err != nil {
 		log.Fatal("Failed to register get message query handler", zap.Error(err))
+	}
+	if err := cqrsManager.RegisterQueryHandler(listMessagesQueryHandler); err != nil {
+		log.Fatal("Failed to register list messages query handler", zap.Error(err))
 	}
 
 	log.Info("CQRS handlers registered successfully")
@@ -406,8 +413,9 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 		DeleteTemplateUseCase: deleteTemplateUseCase,
 
 		// Use Cases - Message
-		SendMessageUseCase: sendMessageUseCase,
-		GetMessageUseCase:  getMessageUseCase,
+		SendMessageUseCase:  sendMessageUseCase,
+		GetMessageUseCase:   getMessageUseCase,
+		ListMessagesUseCase: listMessagesUseCase,
 
 		// CQRS Components
 		CQRSManager: cqrsManager,

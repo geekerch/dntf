@@ -13,5 +13,6 @@ func SetupCQRSMessageRoutes(router *gin.RouterGroup, messageHandler *handlers.CQ
 
 	// Message operations via CQRS
 	messageRouter.POST("/send", messageHandler.SendMessage)
+	messageRouter.GET("", messageHandler.ListMessages)
 	messageRouter.GET("/:id", messageHandler.GetMessage)
 }
