@@ -262,7 +262,7 @@ func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, l
 	)
 
 	// Initialize channel use cases
-	createChannelUseCase := usecases.NewCreateChannelUseCase(channelRepo, channelValidator)
+	createChannelUseCase := usecases.NewCreateChannelUseCase(channelRepo, templateRepo, channelValidator)
 	getChannelUseCase := usecases.NewGetChannelUseCase(channelRepo)
 	listChannelsUseCase := usecases.NewListChannelsUseCase(channelRepo)
 	updateChannelUseCase := usecases.NewUpdateChannelUseCase(channelRepo, channelValidator)

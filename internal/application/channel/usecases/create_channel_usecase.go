@@ -1,8 +1,13 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 
 	"notification/internal/application/channel/dtos"
 	"notification/internal/domain/channel"
@@ -13,18 +18,21 @@ import (
 
 // CreateChannelUseCase is the use case for creating a channel.
 type CreateChannelUseCase struct {
-	channelRepo channel.ChannelRepository
-	validator   *services.ChannelValidator
+	channelRepo  channel.ChannelRepository
+	templateRepo template.TemplateRepository
+	validator    *services.ChannelValidator
 }
 
 // NewCreateChannelUseCase creates a use case instance.
 func NewCreateChannelUseCase(
 	channelRepo channel.ChannelRepository,
+	templateRepo template.TemplateRepository,
 	validator *services.ChannelValidator,
 ) *CreateChannelUseCase {
 	return &CreateChannelUseCase{
-		channelRepo: channelRepo,
-		validator:   validator,
+		channelRepo:  channelRepo,
+		templateRepo: templateRepo,
+		validator:    validator,
 	}
 }
 
@@ -73,6 +81,13 @@ func (uc *CreateChannelUseCase) Execute(ctx context.Context, request *dtos.Creat
 		return nil, fmt.Errorf("failed to save channel: %w", err)
 	}
 
+	//Forward to the legacy notification system.
+	if err := uc.forwardToLegacySystem(ctx, ch); err != nil {
+		// For now, we'll treat forwarding errors as fatal.
+		// Depending on business requirements, this could be changed to just logging.
+		return nil, fmt.Errorf("failed to forward to legacy system: %w", err)
+	}
+
 	// 6. Convert to response DTO
 	response := uc.convertToResponse(ch)
 	return response, nil
@@ -105,6 +120,37 @@ type DomainObjects struct {
 	Config         *channel.ChannelConfig
 	Recipients     *channel.Recipients
 	Tags           *channel.Tags
+}
+
+// LegacyChannelRequest defines the request payload for the legacy system.
+type LegacyChannelRequest struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Type        string         `json:"type"`
+	LevelName   string         `json:"levelName"`
+	Config      LegacyConfig   `json:"config"`
+	SendList    []SendListItem `json:"sendList"`
+}
+
+// LegacyConfig defines the config for the legacy system.
+type LegacyConfig struct {
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	Secure       bool   `json:"secure"`
+	Method       string `json:"method"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	SenderEmail  string `json:"senderEmail"`
+	EmailSubject string `json:"emailSubject"`
+	Template     string `json:"template"`
+}
+
+// SendListItem defines a recipient for the legacy system.
+type SendListItem struct {
+	FirstName     string `json:"firstName"`
+	LastName      string `json:"lastName"`
+	RecipientType string `json:"recipientType"`
+	Target        string `json:"target"`
 }
 
 // convertToDomainObjects converts to domain objects.
@@ -189,4 +235,116 @@ func (uc *CreateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Cha
 		UpdatedAt:      ch.Timestamps().UpdatedAt,
 		LastUsed:       ch.LastUsed(),
 	}
+}
+
+func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, ch *channel.Channel) error {
+	// TODO: Move URL and token to configuration
+	legacyURL := "http://172.22.23.168:10014/api/v2.0/Groups"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               // Replace with actual legacy system URL
+	bearerToken := "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhcHBOYW1lIjoiRXZlbnRDZW50ZXIiLCJjbGllbnRUeXBlIjoic3JwIiwiY2x1c3RlciI6ImVrczAwMSIsImRhdGFjZW50ZXIiOiJsYWJzIiwiZXhwIjo0ODA0ODk1NjkyLCJpYXQiOjE2OTQ0OTU2OTIsImlzT3BlcmF0aW9uIjpmYWxzZSwiaXNzIjoid2lzZS1wYWFzIiwibmFtZXNwYWNlIjoibGlkaW5nIiwicmVmcmVzaFRva2VuIjoiIiwic2NvcGVzIjpbIkFkbWluIiwiRWRpdG9yIiwiVmlld2VyIl0sInNlcnZpY2VOYW1lIjoiRXZlbnRDZW50ZXIiLCJ0b2tlblR5cGUiOiJjbGllbnQiLCJ3b3Jrc3BhY2UiOiI3ZjUyZmNlMy1iMDEwLTQyM2MtODNjYy05NDA4Njg5NDY0YzkifQ.xt0UJhkx1XMs7SAfkB6Dw1VNIWO4uBAd5Yf8kBzaUI7YsL3Yyykm2M9T3HFMONJuf178m5dmtjahB-GtfLNLGg" // Replace with actual token
+
+	// 1. Construct the request body for the legacy system
+	legacyReq := LegacyChannelRequest{
+		Name:        ch.Name().String(),
+		Description: ch.Description().String(),
+		Type:        string(ch.ChannelType()),
+		LevelName:   "Critical", // Assuming this is a default or derived value
+		Config:      LegacyConfig{},
+		SendList:    []SendListItem{},
+	}
+
+	// 1a. Fetch template if TemplateID exists
+	var foundTemplate *template.Template
+	if ch.TemplateID() != nil {
+		var err error
+		foundTemplate, err = uc.templateRepo.FindByID(ctx, ch.TemplateID())
+		if err != nil {
+			// Decide if a missing template is a fatal error. For now, let's assume it is.
+			return fmt.Errorf("failed to find template with ID %s: %w", ch.TemplateID().String(), err)
+		}
+	}
+
+	// 2. Populate Config from ch.Config() and template
+	configMap := ch.Config().ToMap()
+	if host, ok := configMap["host"].(string); ok {
+		legacyReq.Config.Host = host
+	}
+	if port, ok := configMap["port"].(float64); ok { // JSON numbers are float64
+		legacyReq.Config.Port = int(port)
+	}
+	if secure, ok := configMap["secure"].(bool); ok {
+		legacyReq.Config.Secure = secure
+	}
+	if method, ok := configMap["method"].(string); ok {
+		legacyReq.Config.Method = method
+	}
+	if username, ok := configMap["username"].(string); ok {
+		legacyReq.Config.Username = username
+	}
+	if password, ok := configMap["password"].(string); ok {
+		legacyReq.Config.Password = password
+	}
+	if senderEmail, ok := configMap["senderEmail"].(string); ok {
+		legacyReq.Config.SenderEmail = senderEmail
+	}
+
+	// Prioritize template values for subject and content
+	if foundTemplate != nil {
+		legacyReq.Config.EmailSubject = foundTemplate.Subject().String()
+		legacyReq.Config.Template = foundTemplate.Content().String()
+	} else {
+		// Fallback to configMap if no template
+		if emailSubject, ok := configMap["emailSubject"].(string); ok {
+			legacyReq.Config.EmailSubject = emailSubject
+		}
+		if template, ok := configMap["template"].(string); ok {
+			legacyReq.Config.Template = template
+		}
+	}
+
+	// 3. Populate SendList from ch.Recipients()
+	recipientDTOs := dtos.FromRecipientsSlice(ch.Recipients().ToSlice())
+	for _, r := range recipientDTOs {
+		firstName := r.Name
+		lastName := ""
+		if parts := strings.SplitN(r.Name, " ", 2); len(parts) > 1 {
+			firstName = parts[0]
+			lastName = parts[1]
+		}
+
+		legacyReq.SendList = append(legacyReq.SendList, SendListItem{
+			FirstName:     firstName,
+			LastName:      lastName,
+			RecipientType: r.Type,
+			Target:        r.Target,
+		})
+	}
+
+	// 4. Marshal the request body to JSON
+	reqBody, err := json.Marshal(legacyReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal legacy request body: %w", err)
+	}
+
+	// 5. Create and send the HTTP POST request
+	req, err := http.NewRequestWithContext(ctx, "POST", legacyURL, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return fmt.Errorf("failed to create legacy http request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+bearerToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request to legacy system: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 6. Check response status
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("legacy system returned error status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }

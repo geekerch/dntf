@@ -169,7 +169,7 @@ func (cv *ChannelValidator) validateTemplateCompatibility(
 
 	// Check if the template type matches the channel type
 	if !tmpl.MatchesType(channelType) {
-		return fmt.Errorf("template type '%s' does not match channel type '%s'", 
+		return fmt.Errorf("template type '%s' does not match channel type '%s'",
 			tmpl.ChannelType(), channelType)
 	}
 
@@ -196,8 +196,8 @@ func (cv *ChannelValidator) validateChannelConfig(channelType shared.ChannelType
 
 // validateEmailConfig validates email configuration.
 func (cv *ChannelValidator) validateEmailConfig(config *channel.ChannelConfig) error {
-	requiredFields := []string{"host", "port", "username", "password"}
-	
+	requiredFields := []string{"host", "port", "username", "password", "secure", "username", "password", "senderEmail"}
+
 	for _, field := range requiredFields {
 		if value, exists := config.Get(field); !exists || value == "" {
 			return fmt.Errorf("email config missing required field: %s", field)
@@ -226,7 +226,7 @@ func (cv *ChannelValidator) validateEmailConfig(config *channel.ChannelConfig) e
 // validateSlackConfig validates Slack configuration.
 func (cv *ChannelValidator) validateSlackConfig(config *channel.ChannelConfig) error {
 	requiredFields := []string{"token", "workspace"}
-	
+
 	for _, field := range requiredFields {
 		if value, exists := config.Get(field); !exists || value == "" {
 			return fmt.Errorf("slack config missing required field: %s", field)
@@ -239,7 +239,7 @@ func (cv *ChannelValidator) validateSlackConfig(config *channel.ChannelConfig) e
 // validateSMSConfig validates SMS configuration.
 func (cv *ChannelValidator) validateSMSConfig(config *channel.ChannelConfig) error {
 	requiredFields := []string{"provider", "apiKey", "apiSecret"}
-	
+
 	for _, field := range requiredFields {
 		if value, exists := config.Get(field); !exists || value == "" {
 			return fmt.Errorf("sms config missing required field: %s", field)
