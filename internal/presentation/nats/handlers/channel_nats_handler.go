@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
@@ -26,14 +27,15 @@ type ChannelNATSHandler struct {
 
 // NATSRequest represents a generic NATS request message
 type NATSRequest struct {
-	RequestID string      `json:"requestId"`
+	ReqSeqId  string      `json:"reqSeqId"`
 	Data      interface{} `json:"data"`
 	Timestamp int64       `json:"timestamp"`
 }
 
 // NATSResponse represents a generic NATS response message
 type NATSResponse struct {
-	RequestID string      `json:"requestId"`
+	ReqSeqId  string      `json:"reqSeqId"`
+	RspSeqId  string      `json:"rspSeqId"`
 	Success   bool        `json:"success"`
 	Data      interface{} `json:"data,omitempty"`
 	Error     *NATSError  `json:"error,omitempty"`
@@ -100,7 +102,7 @@ func (h *ChannelNATSHandler) RegisterHandlers() error {
 // handleCreateChannel handles create channel NATS messages
 func (h *ChannelNATSHandler) handleCreateChannel(msg *nats.Msg) {
 	ctx := context.Background()
-	
+
 	logger.Info("Received create channel NATS message",
 		zap.String("subject", msg.Subject),
 		zap.String("reply", msg.Reply),
@@ -108,37 +110,37 @@ func (h *ChannelNATSHandler) handleCreateChannel(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
 	// Convert data to CreateChannelRequest
 	dataBytes, err := json.Marshal(natsReq.Data)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 		return
 	}
 
 	var request dtos.CreateChannelRequest
 	if err := json.Unmarshal(dataBytes, &request); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse create channel request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse create channel request", err.Error())
 		return
 	}
 
 	// Execute use case
 	response, err := h.createUseCase.Execute(ctx, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to create channel", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to create channel", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleGetChannel handles get channel NATS messages
 func (h *ChannelNATSHandler) handleGetChannel(msg *nats.Msg) {
 	ctx := context.Background()
-	
+
 	logger.Info("Received get channel NATS message",
 		zap.String("subject", msg.Subject),
 		zap.String("reply", msg.Reply),
@@ -146,7 +148,7 @@ func (h *ChannelNATSHandler) handleGetChannel(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -162,24 +164,24 @@ func (h *ChannelNATSHandler) handleGetChannel(msg *nats.Msg) {
 	}
 
 	if channelID == "" {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Channel ID is required", "")
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Channel ID is required", "")
 		return
 	}
 
 	// Execute use case
 	response, err := h.getUseCase.Execute(ctx, channelID)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to get channel", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to get channel", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleListChannels handles list channels NATS messages
 func (h *ChannelNATSHandler) handleListChannels(msg *nats.Msg) {
 	ctx := context.Background()
-	
+
 	logger.Info("Received list channels NATS message",
 		zap.String("subject", msg.Subject),
 		zap.String("reply", msg.Reply),
@@ -187,7 +189,7 @@ func (h *ChannelNATSHandler) handleListChannels(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -196,12 +198,12 @@ func (h *ChannelNATSHandler) handleListChannels(msg *nats.Msg) {
 	if natsReq.Data != nil {
 		dataBytes, err := json.Marshal(natsReq.Data)
 		if err != nil {
-			h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+			h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 			return
 		}
 
 		if err := json.Unmarshal(dataBytes, &request); err != nil {
-			h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse list channels request", err.Error())
+			h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse list channels request", err.Error())
 			return
 		}
 	}
@@ -214,17 +216,17 @@ func (h *ChannelNATSHandler) handleListChannels(msg *nats.Msg) {
 	// Execute use case
 	response, err := h.listUseCase.Execute(ctx, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to list channels", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to list channels", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleUpdateChannel handles update channel NATS messages
 func (h *ChannelNATSHandler) handleUpdateChannel(msg *nats.Msg) {
 	ctx := context.Background()
-	
+
 	logger.Info("Received update channel NATS message",
 		zap.String("subject", msg.Subject),
 		zap.String("reply", msg.Reply),
@@ -232,37 +234,37 @@ func (h *ChannelNATSHandler) handleUpdateChannel(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
 	// Convert data to UpdateChannelRequest
 	dataBytes, err := json.Marshal(natsReq.Data)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 		return
 	}
 
 	var request dtos.UpdateChannelRequest
 	if err := json.Unmarshal(dataBytes, &request); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse update channel request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse update channel request", err.Error())
 		return
 	}
 
 	// Execute use case
 	response, err := h.updateUseCase.Execute(ctx, request.ChannelID, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to update channel", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to update channel", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleDeleteChannel handles delete channel NATS messages
 func (h *ChannelNATSHandler) handleDeleteChannel(msg *nats.Msg) {
 	ctx := context.Background()
-	
+
 	logger.Info("Received delete channel NATS message",
 		zap.String("subject", msg.Subject),
 		zap.String("reply", msg.Reply),
@@ -270,7 +272,7 @@ func (h *ChannelNATSHandler) handleDeleteChannel(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -286,24 +288,26 @@ func (h *ChannelNATSHandler) handleDeleteChannel(msg *nats.Msg) {
 	}
 
 	if channelID == "" {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Channel ID is required", "")
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Channel ID is required", "")
 		return
 	}
 
 	// Execute use case
 	response, err := h.deleteUseCase.Execute(ctx, channelID)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to delete channel", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to delete channel", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // sendSuccessResponse sends a success response via NATS
-func (h *ChannelNATSHandler) sendSuccessResponse(msg *nats.Msg, requestID string, data interface{}) {
+func (h *ChannelNATSHandler) sendSuccessResponse(msg *nats.Msg, reqSeqId string, data interface{}) {
+	rspId, _ := uuid.NewRandom()
 	response := NATSResponse{
-		RequestID: requestID,
+		ReqSeqId:  reqSeqId,
+		RspSeqId:  rspId.String(),
 		Success:   true,
 		Data:      data,
 		Timestamp: time.Now().Unix(),
@@ -322,9 +326,11 @@ func (h *ChannelNATSHandler) sendSuccessResponse(msg *nats.Msg, requestID string
 
 // sendErrorResponse sends an error response via NATS
 func (h *ChannelNATSHandler) sendErrorResponse(msg *nats.Msg, requestID, code, message, details string) {
+	rspId, _ := uuid.NewRandom()
 	response := NATSResponse{
-		RequestID: requestID,
-		Success:   false,
+		ReqSeqId: requestID,
+		RspSeqId: rspId.String(),
+		Success:  false,
 		Error: &NATSError{
 			Code:    code,
 			Message: message,

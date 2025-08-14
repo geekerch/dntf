@@ -129,12 +129,20 @@ func main() {
 
 	// Initialize NATS handler manager (traditional)
 	natsHandlerConfig := &natshandlers.HandlerConfig{
-		NATSConn:             natsClient.GetConnection(),
-		CreateChannelUseCase: container.CreateChannelUseCase,
-		GetChannelUseCase:    container.GetChannelUseCase,
-		ListChannelsUseCase:  container.ListChannelsUseCase,
-		UpdateChannelUseCase: container.UpdateChannelUseCase,
-		DeleteChannelUseCase: container.DeleteChannelUseCase,
+		NATSConn:              natsClient.GetConnection(),
+		CreateChannelUseCase:  container.CreateChannelUseCase,
+		GetChannelUseCase:     container.GetChannelUseCase,
+		ListChannelsUseCase:   container.ListChannelsUseCase,
+		UpdateChannelUseCase:  container.UpdateChannelUseCase,
+		DeleteChannelUseCase:  container.DeleteChannelUseCase,
+		CreateTemplateUseCase: container.CreateTemplateUseCase,
+		GetTemplateUseCase:    container.GetTemplateUseCase,
+		ListTemplatesUseCase:  container.ListTemplatesUseCase,
+		UpdateTemplateUseCase: container.UpdateTemplateUseCase,
+		DeleteTemplateUseCase: container.DeleteTemplateUseCase,
+		SendMessageUseCase:    container.SendMessageUseCase,
+		GetMessageUseCase:     container.GetMessageUseCase,
+		ListMessagesUseCase:   container.ListMessagesUseCase,
 	}
 	natsManager := natshandlers.NewHandlerManager(natsHandlerConfig)
 

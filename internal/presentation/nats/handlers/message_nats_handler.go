@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
@@ -62,29 +63,29 @@ func (h *MessageNATSHandler) handleSendMessage(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
 	dataBytes, err := json.Marshal(natsReq.Data)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 		return
 	}
 
 	var request dtos.SendMessageRequest
 	if err := json.Unmarshal(dataBytes, &request); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse send message request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse send message request", err.Error())
 		return
 	}
 
 	response, err := h.sendUseCase.Execute(ctx, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to send message", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to send message", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleGetMessage handles get message NATS messages
@@ -97,7 +98,7 @@ func (h *MessageNATSHandler) handleGetMessage(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -111,17 +112,17 @@ func (h *MessageNATSHandler) handleGetMessage(msg *nats.Msg) {
 	}
 
 	if messageID == "" {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Message ID is required", "")
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Message ID is required", "")
 		return
 	}
 
 	response, err := h.getUseCase.Execute(ctx, messageID)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to get message", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to get message", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleListMessages handles list messages NATS messages
@@ -134,7 +135,7 @@ func (h *MessageNATSHandler) handleListMessages(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -142,29 +143,31 @@ func (h *MessageNATSHandler) handleListMessages(msg *nats.Msg) {
 	if natsReq.Data != nil {
 		dataBytes, err := json.Marshal(natsReq.Data)
 		if err != nil {
-			h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+			h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 			return
 		}
 
 		if err := json.Unmarshal(dataBytes, &request); err != nil {
-			h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse list messages request", err.Error())
+			h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse list messages request", err.Error())
 			return
 		}
 	}
 
 	response, err := h.listUseCase.Execute(ctx, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to list messages", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to list messages", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // sendSuccessResponse sends a success response via NATS
-func (h *MessageNATSHandler) sendSuccessResponse(msg *nats.Msg, requestID string, data interface{}) {
+func (h *MessageNATSHandler) sendSuccessResponse(msg *nats.Msg, reqSeqId string, data interface{}) {
+	rspId, _ := uuid.NewRandom()
 	response := NATSResponse{
-		RequestID: requestID,
+		ReqSeqId:  reqSeqId,
+		RspSeqId:  rspId.String(),
 		Success:   true,
 		Data:      data,
 		Timestamp: time.Now().Unix(),
@@ -182,10 +185,12 @@ func (h *MessageNATSHandler) sendSuccessResponse(msg *nats.Msg, requestID string
 }
 
 // sendErrorResponse sends an error response via NATS
-func (h *MessageNATSHandler) sendErrorResponse(msg *nats.Msg, requestID, code, message, details string) {
+func (h *MessageNATSHandler) sendErrorResponse(msg *nats.Msg, reqSeqId, code, message, details string) {
+	rspId, _ := uuid.NewRandom()
 	response := NATSResponse{
-		RequestID: requestID,
-		Success:   false,
+		ReqSeqId: reqSeqId,
+		RspSeqId: rspId.String(),
+		Success:  false,
 		Error: &NATSError{
 			Code:    code,
 			Message: message,

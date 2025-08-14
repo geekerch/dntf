@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
@@ -71,29 +72,29 @@ func (h *TemplateNATSHandler) handleCreateTemplate(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
 	dataBytes, err := json.Marshal(natsReq.Data)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 		return
 	}
 
 	var request dtos.CreateTemplateRequest
 	if err := json.Unmarshal(dataBytes, &request); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse create template request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse create template request", err.Error())
 		return
 	}
 
 	response, err := h.createUseCase.Execute(ctx, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to create template", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to create template", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleGetTemplate handles get template NATS messages
@@ -103,7 +104,7 @@ func (h *TemplateNATSHandler) handleGetTemplate(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -117,17 +118,17 @@ func (h *TemplateNATSHandler) handleGetTemplate(msg *nats.Msg) {
 	}
 
 	if templateID == "" {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Template ID is required", "")
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Template ID is required", "")
 		return
 	}
 
 	response, err := h.getUseCase.Execute(ctx, templateID)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to get template", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to get template", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleListTemplates handles list templates NATS messages
@@ -137,7 +138,7 @@ func (h *TemplateNATSHandler) handleListTemplates(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -145,23 +146,23 @@ func (h *TemplateNATSHandler) handleListTemplates(msg *nats.Msg) {
 	if natsReq.Data != nil {
 		dataBytes, err := json.Marshal(natsReq.Data)
 		if err != nil {
-			h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+			h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 			return
 		}
 
 		if err := json.Unmarshal(dataBytes, &request); err != nil {
-			h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse list templates request", err.Error())
+			h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse list templates request", err.Error())
 			return
 		}
 	}
 
 	response, err := h.listUseCase.Execute(ctx, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to list templates", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to list templates", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleUpdateTemplate handles update template NATS messages
@@ -171,47 +172,47 @@ func (h *TemplateNATSHandler) handleUpdateTemplate(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
 	dataBytes, err := json.Marshal(natsReq.Data)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal request data", err.Error())
 		return
 	}
 
 	var payload map[string]interface{}
 	if err := json.Unmarshal(dataBytes, &payload); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse update template payload", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse update template payload", err.Error())
 		return
 	}
 
 	templateID, ok := payload["templateId"].(string)
 	if !ok || templateID == "" {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "templateId is required in payload", "")
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "templateId is required in payload", "")
 		return
 	}
 	delete(payload, "templateId")
 
 	updateDtoBytes, err := json.Marshal(payload)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to marshal update DTO from payload", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to marshal update DTO from payload", err.Error())
 		return
 	}
 	var updateDto dtos.UpdateTemplateRequest
 	if err := json.Unmarshal(updateDtoBytes, &updateDto); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to unmarshal update DTO", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to unmarshal update DTO", err.Error())
 		return
 	}
 
 	response, err := h.updateUseCase.Execute(ctx, templateID, &updateDto)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to update template", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to update template", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, response)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleDeleteTemplate handles delete template NATS messages
@@ -221,7 +222,7 @@ func (h *TemplateNATSHandler) handleDeleteTemplate(msg *nats.Msg) {
 
 	var natsReq NATSRequest
 	if err := json.Unmarshal(msg.Data, &natsReq); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Failed to parse request", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Failed to parse request", err.Error())
 		return
 	}
 
@@ -235,22 +236,24 @@ func (h *TemplateNATSHandler) handleDeleteTemplate(msg *nats.Msg) {
 	}
 
 	if templateID == "" {
-		h.sendErrorResponse(msg, natsReq.RequestID, "INVALID_REQUEST", "Template ID is required", "")
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "INVALID_REQUEST", "Template ID is required", "")
 		return
 	}
 
 	if err := h.deleteUseCase.Execute(ctx, templateID); err != nil {
-		h.sendErrorResponse(msg, natsReq.RequestID, "EXECUTION_ERROR", "Failed to delete template", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to delete template", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.RequestID, map[string]interface{}{"deleted": true})
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, map[string]interface{}{"deleted": true})
 }
 
 // sendSuccessResponse sends a success response via NATS
-func (h *TemplateNATSHandler) sendSuccessResponse(msg *nats.Msg, requestID string, data interface{}) {
+func (h *TemplateNATSHandler) sendSuccessResponse(msg *nats.Msg, reqSeqId string, data interface{}) {
+	rspSeqId, _ := uuid.NewRandom()
 	response := NATSResponse{
-		RequestID: requestID,
+		ReqSeqId:  reqSeqId,
+		RspSeqId:  rspSeqId.String(),
 		Success:   true,
 		Data:      data,
 		Timestamp: time.Now().Unix(),
@@ -268,10 +271,12 @@ func (h *TemplateNATSHandler) sendSuccessResponse(msg *nats.Msg, requestID strin
 }
 
 // sendErrorResponse sends an error response via NATS
-func (h *TemplateNATSHandler) sendErrorResponse(msg *nats.Msg, requestID, code, message, details string) {
+func (h *TemplateNATSHandler) sendErrorResponse(msg *nats.Msg, reqSeqId, code, message, details string) {
+	rspSeqId, _ := uuid.NewRandom()
 	response := NATSResponse{
-		RequestID: requestID,
-		Success:   false,
+		ReqSeqId: reqSeqId,
+		RspSeqId: rspSeqId.String(),
+		Success:  false,
 		Error: &NATSError{
 			Code:    code,
 			Message: message,
