@@ -5,37 +5,42 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"notification/internal/application/channel/usecases"
+	channel_uc "notification/internal/application/channel/usecases"
+	message_uc "notification/internal/application/message/usecases"
+	template_uc "notification/internal/application/template/usecases"
 	"notification/pkg/logger"
 )
 
 // HandlerManager manages all NATS message handlers
 type HandlerManager struct {
-	natsConn       *nats.Conn
-	channelHandler *ChannelNATSHandler
-	// Add other handlers here as they are implemented
-	// templateHandler *TemplateNATSHandler
-	// messageHandler  *MessageNATSHandler
+	natsConn        *nats.Conn
+	channelHandler  *ChannelNATSHandler
+	templateHandler *TemplateNATSHandler
+	messageHandler  *MessageNATSHandler
 }
 
 // HandlerConfig holds the configuration for creating handlers
 type HandlerConfig struct {
 	NATSConn *nats.Conn
-	
+
 	// Channel use cases
-	CreateChannelUseCase *usecases.CreateChannelUseCase
-	GetChannelUseCase    *usecases.GetChannelUseCase
-	ListChannelsUseCase  *usecases.ListChannelsUseCase
-	UpdateChannelUseCase *usecases.UpdateChannelUseCase
-	DeleteChannelUseCase *usecases.DeleteChannelUseCase
-	
-	// TODO: Add template and message use cases when implemented
-	// CreateTemplateUseCase *usecases.CreateTemplateUseCase
-	// GetTemplateUseCase    *usecases.GetTemplateUseCase
-	// ListTemplatesUseCase  *usecases.ListTemplatesUseCase
-	// UpdateTemplateUseCase *usecases.UpdateTemplateUseCase
-	// DeleteTemplateUseCase *usecases.DeleteTemplateUseCase
-	// SendMessageUseCase    *usecases.SendMessageUseCase
+	CreateChannelUseCase *channel_uc.CreateChannelUseCase
+	GetChannelUseCase    *channel_uc.GetChannelUseCase
+	ListChannelsUseCase  *channel_uc.ListChannelsUseCase
+	UpdateChannelUseCase *channel_uc.UpdateChannelUseCase
+	DeleteChannelUseCase *channel_uc.DeleteChannelUseCase
+
+	// Template use cases
+	CreateTemplateUseCase *template_uc.CreateTemplateUseCase
+	GetTemplateUseCase    *template_uc.GetTemplateUseCase
+	ListTemplatesUseCase  *template_uc.ListTemplatesUseCase
+	UpdateTemplateUseCase *template_uc.UpdateTemplateUseCase
+	DeleteTemplateUseCase *template_uc.DeleteTemplateUseCase
+
+	// Message use cases
+	SendMessageUseCase *message_uc.SendMessageUseCase
+	GetMessageUseCase  *message_uc.GetMessageUseCase
+	ListMessagesUseCase *message_uc.ListMessagesUseCase
 }
 
 // NewHandlerManager creates a new NATS handler manager
@@ -50,7 +55,7 @@ func NewHandlerManager(config *HandlerConfig) *HandlerManager {
 		config.ListChannelsUseCase != nil &&
 		config.UpdateChannelUseCase != nil &&
 		config.DeleteChannelUseCase != nil {
-		
+
 		manager.channelHandler = NewChannelNATSHandler(
 			config.CreateChannelUseCase,
 			config.GetChannelUseCase,
@@ -61,13 +66,33 @@ func NewHandlerManager(config *HandlerConfig) *HandlerManager {
 		)
 	}
 
-	// TODO: Initialize template and message handlers when implemented
-	// if config.CreateTemplateUseCase != nil && ... {
-	//     manager.templateHandler = NewTemplateNATSHandler(...)
-	// }
-	// if config.SendMessageUseCase != nil {
-	//     manager.messageHandler = NewMessageNATSHandler(...)
-	// }
+	// Initialize template handler
+	if config.CreateTemplateUseCase != nil &&
+		config.GetTemplateUseCase != nil &&
+		config.ListTemplatesUseCase != nil &&
+		config.UpdateTemplateUseCase != nil &&
+		config.DeleteTemplateUseCase != nil {
+		manager.templateHandler = NewTemplateNATSHandler(
+			config.CreateTemplateUseCase,
+			config.GetTemplateUseCase,
+			config.ListTemplatesUseCase,
+			config.UpdateTemplateUseCase,
+			config.DeleteTemplateUseCase,
+			config.NATSConn,
+		)
+	}
+
+	// Initialize message handler
+	if config.SendMessageUseCase != nil &&
+		config.GetMessageUseCase != nil &&
+		config.ListMessagesUseCase != nil {
+		manager.messageHandler = NewMessageNATSHandler(
+			config.SendMessageUseCase,
+			config.GetMessageUseCase,
+			config.ListMessagesUseCase,
+			config.NATSConn,
+		)
+	}
 
 	return manager
 }
@@ -84,21 +109,21 @@ func (m *HandlerManager) RegisterAllHandlers() error {
 		logger.Info("Channel NATS handlers registered")
 	}
 
-	// TODO: Register template handlers when implemented
-	// if m.templateHandler != nil {
-	//     if err := m.templateHandler.RegisterHandlers(); err != nil {
-	//         return fmt.Errorf("failed to register template handlers: %w", err)
-	//     }
-	//     logger.Info("Template NATS handlers registered")
-	// }
+	// Register template handlers
+	if m.templateHandler != nil {
+		if err := m.templateHandler.RegisterHandlers(); err != nil {
+			return fmt.Errorf("failed to register template handlers: %w", err)
+		}
+		logger.Info("Template NATS handlers registered")
+	}
 
-	// TODO: Register message handlers when implemented
-	// if m.messageHandler != nil {
-	//     if err := m.messageHandler.RegisterHandlers(); err != nil {
-	//         return fmt.Errorf("failed to register message handlers: %w", err)
-	//     }
-	//     logger.Info("Message NATS handlers registered")
-	// }
+	// Register message handlers
+	if m.messageHandler != nil {
+		if err := m.messageHandler.RegisterHandlers(); err != nil {
+			return fmt.Errorf("failed to register message handlers: %w", err)
+		}
+		logger.Info("Message NATS handlers registered")
+	}
 
 	logger.Info("All NATS message handlers registered successfully")
 	return nil
@@ -107,12 +132,12 @@ func (m *HandlerManager) RegisterAllHandlers() error {
 // Close gracefully shuts down the handler manager
 func (m *HandlerManager) Close() error {
 	logger.Info("Shutting down NATS handler manager")
-	
+
 	if m.natsConn != nil && !m.natsConn.IsClosed() {
 		m.natsConn.Close()
 		logger.Info("NATS connection closed")
 	}
-	
+
 	return nil
 }
 
@@ -126,14 +151,14 @@ func (m *HandlerManager) HealthCheck() error {
 	if m.natsConn == nil {
 		return fmt.Errorf("NATS connection is nil")
 	}
-	
+
 	if m.natsConn.IsClosed() {
 		return fmt.Errorf("NATS connection is closed")
 	}
-	
+
 	if !m.natsConn.IsConnected() {
 		return fmt.Errorf("NATS connection is not connected")
 	}
-	
+
 	return nil
 }
