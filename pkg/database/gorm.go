@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
-	"gorm.io/driver/sqlserver"
+	gorm_sqlite "gorm.io/driver/sqlite"
+	gorm_sqlserver "gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -88,14 +92,14 @@ func createSQLiteDialector(cfg *config.DatabaseConfig) (gorm.Dialector, error) {
 	if dsn == "" {
 		dsn = "notification.db"
 	}
-	return sqlite.Open(dsn), nil
+	return gorm_sqlite.Open(dsn), nil
 }
 
 // createSQLServerDialector creates a SQL Server dialector
 func createSQLServerDialector(cfg *config.DatabaseConfig) (gorm.Dialector, error) {
 	dsn := fmt.Sprintf("server=%s;port=%d;user id=%s;password=%s;database=%s",
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName)
-	return sqlserver.Open(dsn), nil
+	return gorm_sqlserver.Open(dsn), nil
 }
 
 // Close closes the database connection
@@ -107,19 +111,53 @@ func (db *GormDB) Close() error {
 	return sqlDB.Close()
 }
 
-// RunMigrations runs GORM AutoMigrate for all models
+// RunMigrations runs the database migrations
 func (db *GormDB) RunMigrations() error {
-	// Run GORM AutoMigrate
+	return db.runFileBasedMigrations()
+}
+
+// runGormAutoMigration runs GORM's AutoMigrate feature.
+func (db *GormDB) runGormAutoMigration() error {
 	if err := models.MigrateModels(db.DB); err != nil {
 		return fmt.Errorf("failed to run GORM migrations: %w", err)
 	}
 
-	// Create additional indexes
 	if err := models.CreateIndexes(db.DB); err != nil {
 		return fmt.Errorf("failed to create additional indexes: %w", err)
 	}
+	return nil
+}
+
+// runFileBasedMigrations runs migrations from .sql files using golang-migrate
+func (db *GormDB) runFileBasedMigrations() error {
+	databaseURL, err := getDatabaseURL(db.config)
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.New("file://migrations", databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance: %w", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply migrations: %w", err)
+	}
 
 	return nil
+}
+
+func getDatabaseURL(config *config.DatabaseConfig) (string, error) {
+	switch config.Type {
+	case "postgres", "postgresql":
+		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+				config.User, config.Password, config.Host, config.Port, config.DBName, config.SSLMode),
+			nil
+	case "sqlite":
+		return fmt.Sprintf("sqlite3://%s", config.DBName), nil
+	default:
+		return "", fmt.Errorf("unsupported database type for migration: %s", config.Type)
+	}
 }
 
 // GetStats returns database connection pool statistics
@@ -131,15 +169,15 @@ func (db *GormDB) GetStats() (map[string]interface{}, error) {
 
 	stats := sqlDB.Stats()
 	return map[string]interface{}{
-		"max_open_connections":   stats.MaxOpenConnections,
-		"open_connections":       stats.OpenConnections,
-		"in_use":                stats.InUse,
-		"idle":                  stats.Idle,
-		"wait_count":            stats.WaitCount,
-		"wait_duration":         stats.WaitDuration.String(),
-		"max_idle_closed":       stats.MaxIdleClosed,
-		"max_idle_time_closed":  stats.MaxIdleTimeClosed,
-		"max_lifetime_closed":   stats.MaxLifetimeClosed,
+		"max_open_connections": stats.MaxOpenConnections,
+		"open_connections":     stats.OpenConnections,
+		"in_use":               stats.InUse,
+		"idle":                 stats.Idle,
+		"wait_count":           stats.WaitCount,
+		"wait_duration":        stats.WaitDuration.String(),
+		"max_idle_closed":      stats.MaxIdleClosed,
+		"max_idle_time_closed": stats.MaxIdleTimeClosed,
+		"max_lifetime_closed":  stats.MaxLifetimeClosed,
 	}, nil
 }
 

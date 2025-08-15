@@ -12,7 +12,7 @@ import (
 	"notification/internal/infrastructure/models"
 )
 
-// MessageRepositoryImpl implements message.MessageRepository interface
+// MessageRepositoryImpl implements message.MessageRepository interface using GORM
 type MessageRepositoryImpl struct {
 	db *gorm.DB
 }
@@ -24,270 +24,180 @@ func NewMessageRepositoryImpl(db *gorm.DB) *MessageRepositoryImpl {
 	}
 }
 
-// messageRow represents message data in database
-type messageRow struct {
-	ID               string `db:"id"`
-	ChannelIDs       string `db:"channel_ids"`       // JSON array
-	Variables        string `db:"variables"`         // JSON object
-	ChannelOverrides string `db:"channel_overrides"` // JSON object
-	Status           string `db:"status"`
-	CreatedAt        int64  `db:"created_at"`
-}
-
-// messageResultRow represents message result data in database
-type messageResultRow struct {
-	ID           int            `db:"id"`
-	MessageID    string         `db:"message_id"`
-	ChannelID    string         `db:"channel_id"`
-	Status       string         `db:"status"`
-	Message      string         `db:"message"`
-	ErrorCode    sql.NullString `db:"error_code"`
-	ErrorDetails sql.NullString `db:"error_details"`
-	SentAt       sql.NullInt64  `db:"sent_at"`
-}
-
 // Save saves a message to the database
 func (r *MessageRepositoryImpl) Save(ctx context.Context, msg *message.Message) error {
-	// Start transaction
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Convert message to row
-	row, err := r.toMessageRow(msg)
-	if err != nil {
-		return fmt.Errorf("failed to convert message to row: %w", err)
-	}
-
-	// Insert message
-	messageQuery := `
-		INSERT INTO messages (
-			id, channel_ids, variables, channel_overrides, status, created_at
-		) VALUES (
-			:id, :channel_ids, :variables, :channel_overrides, :status, :created_at
-		)`
-
-	_, err = tx.NamedExecContext(ctx, messageQuery, row)
-	if err != nil {
-		return fmt.Errorf("failed to save message: %w", err)
-	}
-
-	// Insert message results
-	for _, result := range msg.Results() {
-		resultRow, err := r.toMessageResultRow(msg.ID(), result)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Convert message to model
+		messageModel, err := r.toMessageModel(msg)
 		if err != nil {
-			return fmt.Errorf("failed to convert message result to row: %w", err)
+			return fmt.Errorf("failed to convert message to model: %w", err)
 		}
 
-		resultQuery := `
-			INSERT INTO message_results (
-				message_id, channel_id, status, message, error_code, error_details, sent_at
-			) VALUES (
-				:message_id, :channel_id, :status, :message, :error_code, :error_details, :sent_at
-			)`
-
-		_, err = tx.NamedExecContext(ctx, resultQuery, resultRow)
-		if err != nil {
-			return fmt.Errorf("failed to save message result: %w", err)
+		// Save message
+		if err := tx.Create(messageModel).Error; err != nil {
+			return fmt.Errorf("failed to save message: %w", err)
 		}
-	}
 
-	// Commit transaction
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+		// Save message results
+		for _, result := range msg.Results() {
+			resultModel, err := r.toMessageResultModel(msg.ID(), result)
+			if err != nil {
+				return fmt.Errorf("failed to convert message result to model: %w", err)
+			}
 
-	return nil
+			if err := tx.Create(resultModel).Error; err != nil {
+				return fmt.Errorf("failed to save message result: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 // FindByID finds a message by its ID
 func (r *MessageRepositoryImpl) FindByID(ctx context.Context, id *message.MessageID) (*message.Message, error) {
-	// Find message
-	messageQuery := `
-		SELECT id, channel_ids, variables, channel_overrides, status, created_at
-		FROM messages 
-		WHERE id = $1`
-
-	var row messageRow
-	err := r.db.GetContext(ctx, &row, messageQuery, id.String())
+	var messageModel models.MessageModel
+	
+	err := r.db.WithContext(ctx).
+		Preload("Results").
+		Where("id = ?", id.String()).
+		First(&messageModel).Error
+	
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("message not found")
 		}
 		return nil, fmt.Errorf("failed to find message: %w", err)
 	}
 
-	// Find message results
-	resultsQuery := `
-		SELECT id, message_id, channel_id, status, message, error_code, error_details, sent_at
-		FROM message_results 
-		WHERE message_id = $1
-		ORDER BY id`
-
-	var resultRows []messageResultRow
-	err = r.db.SelectContext(ctx, &resultRows, resultsQuery, id.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to find message results: %w", err)
-	}
-
-	return r.fromMessageRow(&row, resultRows)
+	return r.fromMessageModel(&messageModel)
 }
 
 // Update updates a message in the database
 func (r *MessageRepositoryImpl) Update(ctx context.Context, msg *message.Message) error {
-	// Start transaction
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Convert message to row
-	row, err := r.toMessageRow(msg)
-	if err != nil {
-		return fmt.Errorf("failed to convert message to row: %w", err)
-	}
-
-	// Update message
-	messageQuery := `
-		UPDATE messages SET
-			channel_ids = :channel_ids,
-			variables = :variables,
-			channel_overrides = :channel_overrides,
-			status = :status
-		WHERE id = :id`
-
-	_, err = tx.NamedExecContext(ctx, messageQuery, row)
-	if err != nil {
-		return fmt.Errorf("failed to update message: %w", err)
-	}
-
-	// Delete existing results
-	_, err = tx.ExecContext(ctx, "DELETE FROM message_results WHERE message_id = $1", msg.ID().String())
-	if err != nil {
-		return fmt.Errorf("failed to delete existing message results: %w", err)
-	}
-
-	// Insert updated results
-	for _, result := range msg.Results() {
-		resultRow, err := r.toMessageResultRow(msg.ID(), result)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Convert message to model
+		messageModel, err := r.toMessageModel(msg)
 		if err != nil {
-			return fmt.Errorf("failed to convert message result to row: %w", err)
+			return fmt.Errorf("failed to convert message to model: %w", err)
 		}
 
-		resultQuery := `
-			INSERT INTO message_results (
-				message_id, channel_id, status, message, error_code, error_details, sent_at
-			) VALUES (
-				:message_id, :channel_id, :status, :message, :error_code, :error_details, :sent_at
-			)`
-
-		_, err = tx.NamedExecContext(ctx, resultQuery, resultRow)
-		if err != nil {
-			return fmt.Errorf("failed to save message result: %w", err)
+		// Update message
+		if err := tx.Save(messageModel).Error; err != nil {
+			return fmt.Errorf("failed to update message: %w", err)
 		}
-	}
 
-	// Commit transaction
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+		// Delete existing results
+		if err := tx.Where("message_id = ?", msg.ID().String()).Delete(&models.MessageResultModel{}).Error; err != nil {
+			return fmt.Errorf("failed to delete existing message results: %w", err)
+		}
 
-	return nil
+		// Save updated results
+		for _, result := range msg.Results() {
+			resultModel, err := r.toMessageResultModel(msg.ID(), result)
+			if err != nil {
+				return fmt.Errorf("failed to convert message result to model: %w", err)
+			}
+
+			if err := tx.Create(resultModel).Error; err != nil {
+				return fmt.Errorf("failed to save message result: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 // Exists checks if a message exists
 func (r *MessageRepositoryImpl) Exists(ctx context.Context, id *message.MessageID) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM messages WHERE id = $1)`
-
-	var exists bool
-	err := r.db.GetContext(ctx, &exists, query, id.String())
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.MessageModel{}).
+		Where("id = ?", id.String()).
+		Count(&count).Error
+	
 	if err != nil {
 		return false, fmt.Errorf("failed to check message existence: %w", err)
 	}
 
-	return exists, nil
+	return count > 0, nil
 }
 
-// toMessageRow converts domain message to database row
-func (r *MessageRepositoryImpl) toMessageRow(msg *message.Message) (*messageRow, error) {
+// toMessageModel converts domain message to GORM model
+func (r *MessageRepositoryImpl) toMessageModel(msg *message.Message) (*models.MessageModel, error) {
 	// Convert channel IDs to JSON
 	channelIDStrings := make([]string, 0, msg.ChannelIDs().Count())
 	for _, id := range msg.ChannelIDs().ToSlice() {
 		channelIDStrings = append(channelIDStrings, id.String())
 	}
-	channelIDsJSON, err := json.Marshal(channelIDStrings)
+	channelIDs := models.JSON{}
+	channelIDData, err := json.Marshal(channelIDStrings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal channel IDs: %w", err)
 	}
-
-	// Convert variables to JSON
-	variablesJSON, err := json.Marshal(msg.Variables().ToMap())
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal variables: %w", err)
+	if err := json.Unmarshal(channelIDData, &channelIDs); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal channel IDs to JSON type: %w", err)
 	}
 
+	// Convert variables to JSON
+	variables := models.JSON(msg.Variables().ToMap())
+
 	// Convert channel overrides to JSON
-	channelOverridesJSON, err := json.Marshal(msg.ChannelOverrides().ToMap())
+	channelOverrides := models.JSON{}
+	overrideData, err := json.Marshal(msg.ChannelOverrides().ToMap())
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal channel overrides: %w", err)
 	}
+	if err := json.Unmarshal(overrideData, &channelOverrides); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal channel overrides to JSON type: %w", err)
+	}
 
-	return &messageRow{
+	return &models.MessageModel{
 		ID:               msg.ID().String(),
-		ChannelIDs:       string(channelIDsJSON),
-		Variables:        string(variablesJSON),
-		ChannelOverrides: string(channelOverridesJSON),
+		ChannelIDs:       channelIDs,
+		Variables:        variables,
+		ChannelOverrides: channelOverrides,
 		Status:           string(msg.Status()),
 		CreatedAt:        msg.CreatedAt(),
 	}, nil
 }
 
-// toMessageResultRow converts domain message result to database row
-func (r *MessageRepositoryImpl) toMessageResultRow(messageID *message.MessageID, result *message.MessageResult) (*messageResultRow, error) {
-	row := &messageResultRow{
+// toMessageResultModel converts domain message result to GORM model
+func (r *MessageRepositoryImpl) toMessageResultModel(messageID *message.MessageID, result *message.MessageResult) (*models.MessageResultModel, error) {
+	model := &models.MessageResultModel{
 		MessageID: messageID.String(),
 		ChannelID: result.ChannelID().String(),
 		Status:    string(result.Status()),
 		Message:   result.Message(),
+		SentAt:    result.SentAt(),
 	}
 
 	// Handle error
 	if result.Error() != nil {
-		row.ErrorCode = sql.NullString{
-			String: result.Error().Code,
-			Valid:  true,
-		}
-		row.ErrorDetails = sql.NullString{
-			String: result.Error().Details,
-			Valid:  true,
-		}
+		errorCode := result.Error().Code
+		errorDetails := result.Error().Details
+		model.ErrorCode = &errorCode
+		model.ErrorDetails = &errorDetails
 	}
 
-	// Handle sent_at
-	if result.SentAt() != nil {
-		row.SentAt = sql.NullInt64{
-			Int64: *result.SentAt(),
-			Valid: true,
-		}
-	}
-
-	return row, nil
+	return model, nil
 }
 
-// fromMessageRow converts database row to domain message
-func (r *MessageRepositoryImpl) fromMessageRow(row *messageRow, resultRows []messageResultRow) (*message.Message, error) {
+// fromMessageModel converts GORM model to domain message
+func (r *MessageRepositoryImpl) fromMessageModel(model *models.MessageModel) (*message.Message, error) {
 	// Convert ID
-	id, err := message.NewMessageIDFromString(row.ID)
+	id, err := message.NewMessageIDFromString(model.ID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid message ID: %w", err)
 	}
 
 	// Convert channel IDs
 	var channelIDStrings []string
-	if err := json.Unmarshal([]byte(row.ChannelIDs), &channelIDStrings); err != nil {
+	channelIDData, err := json.Marshal(model.ChannelIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal channel IDs: %w", err)
+	}
+	if err := json.Unmarshal(channelIDData, &channelIDStrings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal channel IDs: %w", err)
 	}
 
@@ -306,26 +216,27 @@ func (r *MessageRepositoryImpl) fromMessageRow(row *messageRow, resultRows []mes
 	}
 
 	// Convert variables
-	var variablesMap map[string]interface{}
-	if err := json.Unmarshal([]byte(row.Variables), &variablesMap); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal variables: %w", err)
-	}
+	variablesMap := map[string]interface{}(model.Variables)
 	variables := message.NewVariables(variablesMap)
 
 	// Convert channel overrides
 	var channelOverridesMap map[string]*message.ChannelOverride
-	if err := json.Unmarshal([]byte(row.ChannelOverrides), &channelOverridesMap); err != nil {
+	overrideData, err := json.Marshal(model.ChannelOverrides)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal channel overrides: %w", err)
+	}
+	if err := json.Unmarshal(overrideData, &channelOverridesMap); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal channel overrides: %w", err)
 	}
 	channelOverrides := message.NewChannelOverrides(channelOverridesMap)
 
 	// Convert status
-	status := message.MessageStatus(row.Status)
+	status := message.MessageStatus(model.Status)
 
 	// Convert results
-	results := make([]*message.MessageResult, 0, len(resultRows))
-	for _, resultRow := range resultRows {
-		result, err := r.fromMessageResultRow(&resultRow)
+	results := make([]*message.MessageResult, 0, len(model.Results))
+	for _, resultModel := range model.Results {
+		result, err := r.fromMessageResultModel(&resultModel)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert message result: %w", err)
 		}
@@ -340,31 +251,35 @@ func (r *MessageRepositoryImpl) fromMessageRow(row *messageRow, resultRows []mes
 		channelOverrides,
 		status,
 		results,
-		row.CreatedAt,
+		model.CreatedAt,
 	), nil
 }
 
-// fromMessageResultRow converts database row to domain message result
-func (r *MessageRepositoryImpl) fromMessageResultRow(row *messageResultRow) (*message.MessageResult, error) {
+// fromMessageResultModel converts GORM model to domain message result
+func (r *MessageRepositoryImpl) fromMessageResultModel(model *models.MessageResultModel) (*message.MessageResult, error) {
 	// Convert channel ID
-	channelID, err := channel.NewChannelIDFromString(row.ChannelID)
+	channelID, err := channel.NewChannelIDFromString(model.ChannelID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid channel ID: %w", err)
 	}
 
 	// Convert status and create result
-	status := message.MessageResultStatus(row.Status)
+	status := message.MessageResultStatus(model.Status)
 	if status == message.MessageResultStatusSuccess {
-		return message.NewSuccessfulMessageResult(channelID, row.Message)
+		return message.NewSuccessfulMessageResult(channelID, model.Message)
 	} else {
 		// Handle error
 		var msgError *message.MessageError
-		if row.ErrorCode.Valid {
-			msgError = message.NewMessageError(row.ErrorCode.String, row.ErrorDetails.String)
+		if model.ErrorCode != nil {
+			errorDetails := ""
+			if model.ErrorDetails != nil {
+				errorDetails = *model.ErrorDetails
+			}
+			msgError = message.NewMessageError(*model.ErrorCode, errorDetails)
 		} else {
 			msgError = message.NewMessageError("UNKNOWN_ERROR", "Unknown error occurred")
 		}
 
-		return message.NewFailedMessageResult(channelID, row.Message, msgError)
+		return message.NewFailedMessageResult(channelID, model.Message, msgError)
 	}
 }

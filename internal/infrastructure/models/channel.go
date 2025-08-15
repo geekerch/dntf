@@ -21,7 +21,7 @@ type ChannelModel struct {
 	RetryDelay     int             `gorm:"not null;default:0;check:retry_delay >= 0" json:"retry_delay"`
 	Config         JSON            `gorm:"type:jsonb;not null" json:"config"`
 	Recipients     JSON            `gorm:"type:jsonb;not null" json:"recipients"`
-	Tags           StringArray     `gorm:"type:text[];default:'{}';index:idx_channels_tags,type:gin,where:deleted_at IS NULL" json:"tags"`
+	Tags           StringArray     `gorm:"type:text[];default:'{}'" json:"tags"`
 	CreatedAt      int64           `gorm:"not null;index:idx_channels_created_at,where:deleted_at IS NULL" json:"created_at"`
 	UpdatedAt      int64           `gorm:"not null" json:"updated_at"`
 	DeletedAt      *int64          `gorm:"index" json:"deleted_at"`

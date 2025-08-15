@@ -12,7 +12,7 @@ type TemplateModel struct {
 	ChannelType string      `gorm:"type:varchar(50);not null;index:idx_templates_type,where:deleted_at IS NULL;check:channel_type IN ('email','slack','sms')" json:"channel_type"`
 	Subject     string      `gorm:"type:varchar(200);default:''" json:"subject"`
 	Content     string      `gorm:"type:text;not null" json:"content"`
-	Tags        StringArray `gorm:"type:text[];default:'{}';index:idx_templates_tags,type:gin,where:deleted_at IS NULL" json:"tags"`
+	Tags        StringArray `gorm:"type:text[];default:'{}'" json:"tags"`
 	CreatedAt   int64       `gorm:"not null;index:idx_templates_created_at,where:deleted_at IS NULL" json:"created_at"`
 	UpdatedAt   int64       `gorm:"not null" json:"updated_at"`
 	DeletedAt   *int64      `gorm:"index" json:"deleted_at"`
