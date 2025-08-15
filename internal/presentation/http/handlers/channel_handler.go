@@ -52,22 +52,31 @@ func (h *ChannelHandler) CreateChannel(c *gin.Context) {
 	var request dtos.CreateChannelRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "INVALID_REQUEST",
+				"message": "Invalid request format: " + err.Error(),
+			},
 		})
 		return
 	}
 
 	response, err := h.createUseCase.Execute(c.Request.Context(), &request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to create channel",
-			"details": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "CREATE_CHANNEL_FAILED",
+				"message": "Failed to create channel: " + err.Error(),
+			},
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusCreated, gin.H{
+		"data":  response,
+		"error": nil,
+	})
 }
 
 // GetChannel handles GET /api/v1/channels/:id
@@ -86,7 +95,11 @@ func (h *ChannelHandler) GetChannel(c *gin.Context) {
 	channelID := c.Param("id")
 	if channelID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Channel ID is required",
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "INVALID_REQUEST",
+				"message": "Channel ID is required",
+			},
 		})
 		return
 	}
@@ -94,13 +107,19 @@ func (h *ChannelHandler) GetChannel(c *gin.Context) {
 	response, err := h.getUseCase.Execute(c.Request.Context(), channelID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error":   "Channel not found",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "CHANNEL_NOT_FOUND",
+				"message": "Channel not found: " + err.Error(),
+			},
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"data":  response,
+		"error": nil,
+	})
 }
 
 // ListChannels handles GET /api/v1/channels
@@ -148,14 +167,20 @@ func (h *ChannelHandler) ListChannels(c *gin.Context) {
 
 	response, err := h.listUseCase.Execute(c.Request.Context(), &request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to list channels",
-			"details": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "LIST_CHANNELS_FAILED",
+				"message": "Failed to list channels: " + err.Error(),
+			},
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"data":  response,
+		"error": nil,
+	})
 }
 
 // UpdateChannel handles PUT /api/v1/channels/:id
@@ -175,7 +200,11 @@ func (h *ChannelHandler) UpdateChannel(c *gin.Context) {
 	channelID := c.Param("id")
 	if channelID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Channel ID is required",
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "INVALID_REQUEST",
+				"message": "Channel ID is required",
+			},
 		})
 		return
 	}
@@ -183,8 +212,11 @@ func (h *ChannelHandler) UpdateChannel(c *gin.Context) {
 	var request dtos.UpdateChannelRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "INVALID_REQUEST",
+				"message": "Invalid request format: " + err.Error(),
+			},
 		})
 		return
 	}
@@ -194,14 +226,20 @@ func (h *ChannelHandler) UpdateChannel(c *gin.Context) {
 
 	response, err := h.updateUseCase.Execute(c.Request.Context(), channelID, &request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to update channel",
-			"details": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "UPDATE_CHANNEL_FAILED",
+				"message": "Failed to update channel: " + err.Error(),
+			},
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"data":  response,
+		"error": nil,
+	})
 }
 
 // DeleteChannel handles DELETE /api/v1/channels/:id
@@ -220,19 +258,29 @@ func (h *ChannelHandler) DeleteChannel(c *gin.Context) {
 	channelID := c.Param("id")
 	if channelID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Channel ID is required",
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "INVALID_REQUEST",
+				"message": "Channel ID is required",
+			},
 		})
 		return
 	}
 
 	response, err := h.deleteUseCase.Execute(c.Request.Context(), channelID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to delete channel",
-			"details": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "DELETE_CHANNEL_FAILED",
+				"message": "Failed to delete channel: " + err.Error(),
+			},
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"data":  response,
+		"error": nil,
+	})
 }

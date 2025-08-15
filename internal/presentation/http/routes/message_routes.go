@@ -12,6 +12,7 @@ func SetupMessageRoutes(router *gin.RouterGroup, messageHandler *handlers.Messag
 	messageRouter := router.Group("/messages")
 
 	// Message operations
-	messageRouter.POST("/send", messageHandler.SendMessage)
-	messageRouter.GET("/:id", messageHandler.GetMessage)
+	messageRouter.POST("", messageHandler.SendMessage)  // POST /api/v1/messages for sending messages
+	messageRouter.GET("", messageHandler.ListMessages)  // GET /api/v1/messages for listing messages
+	messageRouter.GET("/:id", messageHandler.GetMessage) // GET /api/v1/messages/{id} for getting specific message
 }

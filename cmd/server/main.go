@@ -120,6 +120,7 @@ func main() {
 	messageHandler := handlers.NewMessageHandler(
 		container.SendMessageUseCase,
 		container.GetMessageUseCase,
+		container.ListMessagesUseCase,
 	)
 
 	// Initialize CQRS HTTP handlers
