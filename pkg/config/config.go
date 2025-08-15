@@ -42,6 +42,7 @@ type DatabaseConfig struct {
 // NATSConfig holds NATS configuration
 type NATSConfig struct {
 	URL             string `json:"url"`
+	CredsPath       string `json:"credsPath"`
 	MaxReconnects   int    `json:"maxReconnects"`
 	ReconnectWait   int    `json:"reconnectWait"` // in seconds
 	RequestTimeout  int    `json:"requestTimeout"` // in seconds
@@ -82,6 +83,7 @@ func Load() (*Config, error) {
 		},
 		NATS: NATSConfig{
 			URL:             getEnv("NATS_URL", "nats://localhost:4222"),
+			CredsPath:       getEnv("NATS_CREDS_PATH", ""),
 			MaxReconnects:   getEnvAsInt("NATS_MAX_RECONNECTS", 10),
 			ReconnectWait:   getEnvAsInt("NATS_RECONNECT_WAIT", 2),
 			RequestTimeout:  getEnvAsInt("NATS_REQUEST_TIMEOUT", 30),

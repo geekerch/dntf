@@ -38,6 +38,11 @@ func NewNATSClient(cfg *config.NATSConfig, log *logger.Logger) (*NATSClient, err
 		}),
 	}
 
+	// Add user credentials if provided
+	if cfg.CredsPath != "" {
+		opts = append(opts, nats.UserCredentials(cfg.CredsPath))
+	}
+
 	// Connect to NATS
 	conn, err := nats.Connect(cfg.URL, opts...)
 	if err != nil {
