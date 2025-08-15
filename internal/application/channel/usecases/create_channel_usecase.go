@@ -14,6 +14,7 @@ import (
 	"notification/internal/domain/services"
 	"notification/internal/domain/shared"
 	"notification/internal/domain/template"
+	"notification/pkg/config"
 )
 
 // CreateChannelUseCase is the use case for creating a channel.
@@ -21,6 +22,7 @@ type CreateChannelUseCase struct {
 	channelRepo  channel.ChannelRepository
 	templateRepo template.TemplateRepository
 	validator    *services.ChannelValidator
+	config       *config.Config
 }
 
 // NewCreateChannelUseCase creates a use case instance.
@@ -28,11 +30,13 @@ func NewCreateChannelUseCase(
 	channelRepo channel.ChannelRepository,
 	templateRepo template.TemplateRepository,
 	validator *services.ChannelValidator,
+	config *config.Config,
 ) *CreateChannelUseCase {
 	return &CreateChannelUseCase{
 		channelRepo:  channelRepo,
 		templateRepo: templateRepo,
 		validator:    validator,
+		config:       config,
 	}
 }
 
@@ -238,9 +242,8 @@ func (uc *CreateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Cha
 }
 
 func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, ch *channel.Channel) error {
-	// TODO: Move URL and token to configuration
-	legacyURL := "http://172.22.23.168:10014/api/v2.0/Groups"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               // Replace with actual legacy system URL
-	bearerToken := "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhcHBOYW1lIjoiRXZlbnRDZW50ZXIiLCJjbGllbnRUeXBlIjoic3JwIiwiY2x1c3RlciI6ImVrczAwMSIsImRhdGFjZW50ZXIiOiJsYWJzIiwiZXhwIjo0ODA0ODk1NjkyLCJpYXQiOjE2OTQ0OTU2OTIsImlzT3BlcmF0aW9uIjpmYWxzZSwiaXNzIjoid2lzZS1wYWFzIiwibmFtZXNwYWNlIjoibGlkaW5nIiwicmVmcmVzaFRva2VuIjoiIiwic2NvcGVzIjpbIkFkbWluIiwiRWRpdG9yIiwiVmlld2VyIl0sInNlcnZpY2VOYW1lIjoiRXZlbnRDZW50ZXIiLCJ0b2tlblR5cGUiOiJjbGllbnQiLCJ3b3Jrc3BhY2UiOiI3ZjUyZmNlMy1iMDEwLTQyM2MtODNjYy05NDA4Njg5NDY0YzkifQ.xt0UJhkx1XMs7SAfkB6Dw1VNIWO4uBAd5Yf8kBzaUI7YsL3Yyykm2M9T3HFMONJuf178m5dmtjahB-GtfLNLGg" // Replace with actual token
+	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups"
+	bearerToken := uc.config.LegacySystem.Token
 
 	// 1. Construct the request body for the legacy system
 	legacyReq := LegacyChannelRequest{

@@ -8,12 +8,19 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// LegacySystemConfig holds configuration for the legacy system
+type LegacySystemConfig struct {
+	URL   string `json:"url"`
+	Token string `json:"token"`
+}
+
 // Config holds all application configuration
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	NATS     NATSConfig
-	Logger   LoggerConfig
+	Server       ServerConfig
+	Database     DatabaseConfig
+	NATS         NATSConfig
+	Logger       LoggerConfig
+	LegacySystem LegacySystemConfig
 }
 
 // ServerConfig holds server configuration
@@ -26,7 +33,7 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	Type         string `json:"type"`         // postgres, sqlite, sqlserver
+	Type         string `json:"type"` // postgres, sqlite, sqlserver
 	Host         string `json:"host"`
 	Port         int    `json:"port"`
 	User         string `json:"user"`
@@ -41,12 +48,12 @@ type DatabaseConfig struct {
 
 // NATSConfig holds NATS configuration
 type NATSConfig struct {
-	URL             string `json:"url"`
-	CredsPath       string `json:"credsPath"`
-	MaxReconnects   int    `json:"maxReconnects"`
-	ReconnectWait   int    `json:"reconnectWait"` // in seconds
-	RequestTimeout  int    `json:"requestTimeout"` // in seconds
-	SubjectPrefix   string `json:"subjectPrefix"`
+	URL            string `json:"url"`
+	CredsPath      string `json:"credsPath"`
+	MaxReconnects  int    `json:"maxReconnects"`
+	ReconnectWait  int    `json:"reconnectWait"`  // in seconds
+	RequestTimeout int    `json:"requestTimeout"` // in seconds
+	SubjectPrefix  string `json:"subjectPrefix"`
 }
 
 // LoggerConfig holds logger configuration
@@ -82,17 +89,21 @@ func Load() (*Config, error) {
 			MaxLifetime:  getEnvAsInt("DB_MAX_LIFETIME", 5),
 		},
 		NATS: NATSConfig{
-			URL:             getEnv("NATS_URL", "nats://localhost:4222"),
-			CredsPath:       getEnv("NATS_CREDS_PATH", ""),
-			MaxReconnects:   getEnvAsInt("NATS_MAX_RECONNECTS", 10),
-			ReconnectWait:   getEnvAsInt("NATS_RECONNECT_WAIT", 2),
-			RequestTimeout:  getEnvAsInt("NATS_REQUEST_TIMEOUT", 30),
-			SubjectPrefix:   getEnv("NATS_SUBJECT_PREFIX", "eco1j.infra.eventcenter"),
+			URL:            getEnv("NATS_URL", "nats://localhost:4222"),
+			CredsPath:      getEnv("NATS_CREDS_PATH", ""),
+			MaxReconnects:  getEnvAsInt("NATS_MAX_RECONNECTS", 10),
+			ReconnectWait:  getEnvAsInt("NATS_RECONNECT_WAIT", 2),
+			RequestTimeout: getEnvAsInt("NATS_REQUEST_TIMEOUT", 30),
+			SubjectPrefix:  getEnv("NATS_SUBJECT_PREFIX", "eco1j.infra.eventcenter"),
 		},
 		Logger: LoggerConfig{
 			Level:      getEnv("LOG_LEVEL", "info"),
 			Format:     getEnv("LOG_FORMAT", "json"),
 			OutputPath: getEnv("LOG_OUTPUT_PATH", "stdout"),
+		},
+		LegacySystem: LegacySystemConfig{
+			URL:   getEnv("LEGACY_SYSTEM_URL", ""),
+			Token: getEnv("LEGACY_SYSTEM_TOKEN", ""),
 		},
 	}
 
