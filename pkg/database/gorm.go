@@ -56,6 +56,15 @@ func NewGormDB(cfg *config.DatabaseConfig) (*GormDB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	// Create schema if it doesn't exist (for PostgreSQL)
+	if cfg.Type == "postgres" || cfg.Type == "postgresql" {
+		if cfg.Schema != "" && cfg.Schema != "public" {
+			if err := db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", cfg.Schema)).Error; err != nil {
+				return nil, fmt.Errorf("failed to create schema: %w", err)
+			}
+		}
+	}
+
 	// Get underlying sql.DB for connection pool configuration
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -82,6 +91,9 @@ func NewGormDB(cfg *config.DatabaseConfig) (*GormDB, error) {
 func createPostgresDialector(cfg *config.DatabaseConfig) (gorm.Dialector, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode)
+	if cfg.Schema != "" {
+		dsn += fmt.Sprintf(" search_path=%s", cfg.Schema)
+	}
 	return postgres.Open(dsn), nil
 }
 
@@ -150,9 +162,12 @@ func (db *GormDB) runFileBasedMigrations() error {
 func getDatabaseURL(config *config.DatabaseConfig) (string, error) {
 	switch config.Type {
 	case "postgres", "postgresql":
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-				config.User, config.Password, config.Host, config.Port, config.DBName, config.SSLMode),
-			nil
+		url := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+			config.User, config.Password, config.Host, config.Port, config.DBName, config.SSLMode)
+		if config.Schema != "" {
+			url += fmt.Sprintf("&search_path=%s", config.Schema)
+		}
+		return url, nil
 	case "sqlite":
 		return fmt.Sprintf("sqlite3://%s", config.DBName), nil
 	default:
@@ -169,15 +184,15 @@ func (db *GormDB) GetStats() (map[string]interface{}, error) {
 
 	stats := sqlDB.Stats()
 	return map[string]interface{}{
-		"max_open_connections": stats.MaxOpenConnections,
-		"open_connections":     stats.OpenConnections,
-		"in_use":               stats.InUse,
-		"idle":                 stats.Idle,
-		"wait_count":           stats.WaitCount,
-		"wait_duration":        stats.WaitDuration.String(),
-		"max_idle_closed":      stats.MaxIdleClosed,
-		"max_idle_time_closed": stats.MaxIdleTimeClosed,
-		"max_lifetime_closed":  stats.MaxLifetimeClosed,
+		"max_open_connections":   stats.MaxOpenConnections,
+		"open_connections":       stats.OpenConnections,
+		"in_use":                stats.InUse,
+		"idle":                  stats.Idle,
+		"wait_count":            stats.WaitCount,
+		"wait_duration":         stats.WaitDuration.String(),
+		"max_idle_closed":       stats.MaxIdleClosed,
+		"max_idle_time_closed":  stats.MaxIdleTimeClosed,
+		"max_lifetime_closed":   stats.MaxLifetimeClosed,
 	}, nil
 }
 

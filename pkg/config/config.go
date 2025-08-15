@@ -32,6 +32,7 @@ type DatabaseConfig struct {
 	User         string `json:"user"`
 	Password     string `json:"password"`
 	DBName       string `json:"dbName"`
+	Schema       string `json:"schema"`
 	SSLMode      string `json:"sslMode"`
 	MaxOpenConns int    `json:"maxOpenConns"`
 	MaxIdleConns int    `json:"maxIdleConns"`
@@ -73,6 +74,7 @@ func Load() (*Config, error) {
 			User:         getEnv("DB_USER", "postgres"),
 			Password:     getEnv("DB_PASSWORD", ""),
 			DBName:       getEnv("DB_NAME", "channel_api"),
+			Schema:       getEnv("DB_SCHEMA", "public"),
 			SSLMode:      getEnv("DB_SSL_MODE", "disable"),
 			MaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
 			MaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
