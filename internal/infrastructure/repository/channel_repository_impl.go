@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 
 	"notification/internal/domain/channel"
@@ -42,11 +43,11 @@ func (r *ChannelRepositoryImpl) Save(ctx context.Context, ch *channel.Channel) e
 // FindByID finds a channel by its ID
 func (r *ChannelRepositoryImpl) FindByID(ctx context.Context, id *channel.ChannelID) (*channel.Channel, error) {
 	var model models.ChannelModel
-	
+
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND deleted_at IS NULL", id.String()).
 		First(&model).Error
-	
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("channel not found")
@@ -60,11 +61,11 @@ func (r *ChannelRepositoryImpl) FindByID(ctx context.Context, id *channel.Channe
 // FindByName finds a channel by its name
 func (r *ChannelRepositoryImpl) FindByName(ctx context.Context, name *channel.ChannelName) (*channel.Channel, error) {
 	var model models.ChannelModel
-	
+
 	err := r.db.WithContext(ctx).
 		Where("name = ? AND deleted_at IS NULL", name.String()).
 		First(&model).Error
-	
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("channel not found")
@@ -87,7 +88,7 @@ func (r *ChannelRepositoryImpl) FindAll(ctx context.Context, filter *channel.Cha
 	if filter.HasTagsFilter() {
 		// For PostgreSQL, use array overlap operator
 		if r.db.Dialector.Name() == "postgres" {
-			query = query.Where("tags && ?", models.StringArray(filter.Tags))
+			query = query.Where("tags && ?", pq.StringArray(filter.Tags))
 		} else {
 			// For other databases, use JSON contains logic
 			for _, tag := range filter.Tags {
@@ -113,7 +114,7 @@ func (r *ChannelRepositoryImpl) FindAll(ctx context.Context, filter *channel.Cha
 		Limit(pagination.MaxResultCount).
 		Offset(pagination.SkipCount).
 		Find(&channelModels).Error
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channels: %w", err)
 	}
@@ -170,7 +171,7 @@ func (r *ChannelRepositoryImpl) Exists(ctx context.Context, id *channel.ChannelI
 		Model(&models.ChannelModel{}).
 		Where("id = ? AND deleted_at IS NULL", id.String()).
 		Count(&count).Error
-	
+
 	if err != nil {
 		return false, fmt.Errorf("failed to check channel existence: %w", err)
 	}
@@ -185,7 +186,7 @@ func (r *ChannelRepositoryImpl) ExistsByName(ctx context.Context, name *channel.
 		Model(&models.ChannelModel{}).
 		Where("name = ? AND deleted_at IS NULL", name.String()).
 		Count(&count).Error
-	
+
 	if err != nil {
 		return false, fmt.Errorf("failed to check channel name existence: %w", err)
 	}
@@ -198,15 +199,15 @@ func (r *ChannelRepositoryImpl) toChannelModel(ch *channel.Channel) (*models.Cha
 	// Convert config to JSON
 	config := models.JSON(ch.Config().ToMap())
 
-	// Convert recipients to JSON
-	recipients := models.JSON{}
+	// Convert recipients to JSONArray
+	var recipients models.JSONArray
 	recipientSlice := ch.Recipients().ToSlice()
 	recipientData, err := json.Marshal(recipientSlice)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal recipients: %w", err)
 	}
 	if err := json.Unmarshal(recipientData, &recipients); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal recipients to JSON type: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal recipients to JSONArray type: %w", err)
 	}
 
 	// Handle template ID
@@ -223,22 +224,22 @@ func (r *ChannelRepositoryImpl) toChannelModel(ch *channel.Channel) (*models.Cha
 	}
 
 	return &models.ChannelModel{
-		ID:             ch.ID().String(),
-		Name:           ch.Name().String(),
-		Description:    ch.Description().String(),
-		Enabled:        ch.IsEnabled(),
-		ChannelType:    string(ch.ChannelType()),
-		TemplateID:     templateID,
-		Timeout:        ch.CommonSettings().Timeout,
-		RetryAttempts:  ch.CommonSettings().RetryAttempts,
-		RetryDelay:     ch.CommonSettings().RetryDelay,
-		Config:         config,
-		Recipients:     recipients,
-		Tags:           models.StringArray(ch.Tags().ToSlice()),
-		CreatedAt:      ch.Timestamps().CreatedAt,
-		UpdatedAt:      ch.Timestamps().UpdatedAt,
-		DeletedAt:      deletedAt,
-		LastUsed:       ch.LastUsed(),
+		ID:            ch.ID().String(),
+		Name:          ch.Name().String(),
+		Description:   ch.Description().String(),
+		Enabled:       ch.IsEnabled(),
+		ChannelType:   string(ch.ChannelType()),
+		TemplateID:    templateID,
+		Timeout:       ch.CommonSettings().Timeout,
+		RetryAttempts: ch.CommonSettings().RetryAttempts,
+		RetryDelay:    ch.CommonSettings().RetryDelay,
+		Config:        config,
+		Recipients:    recipients,
+		Tags:          pq.StringArray(ch.Tags().ToSlice()),
+		CreatedAt:     ch.Timestamps().CreatedAt,
+		UpdatedAt:     ch.Timestamps().UpdatedAt,
+		DeletedAt:     deletedAt,
+		LastUsed:      ch.LastUsed(),
 	}, nil
 }
 
@@ -299,7 +300,7 @@ func (r *ChannelRepositoryImpl) fromChannelModel(model *models.ChannelModel) (*c
 	recipients := channel.NewRecipients(recipientSlice)
 
 	// Convert tags
-	tags := channel.NewTags([]string(model.Tags))
+	tags := channel.NewTags(model.Tags)
 
 	// Convert timestamps
 	timestamps := &shared.Timestamps{

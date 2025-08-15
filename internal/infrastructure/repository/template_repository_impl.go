@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+	"github.com/lib/pq"
 
 	"notification/internal/domain/shared"
 	"notification/internal/domain/template"
@@ -85,7 +86,7 @@ func (r *TemplateRepositoryImpl) FindAll(ctx context.Context, filter *template.T
 	if filter.HasTagsFilter() {
 		// For PostgreSQL, use array overlap operator
 		if r.db.Dialector.Name() == "postgres" {
-			query = query.Where("tags && ?", models.StringArray(filter.Tags))
+			query = query.Where("tags && ?", pq.StringArray(filter.Tags))
 		} else {
 			// For other databases, use JSON contains logic
 			for _, tag := range filter.Tags {
@@ -202,7 +203,7 @@ func (r *TemplateRepositoryImpl) toTemplateModel(tmpl *template.Template) (*mode
 		ChannelType: string(tmpl.ChannelType()),
 		Subject:     tmpl.Subject().String(),
 		Content:     tmpl.Content().String(),
-		Tags:        models.StringArray(tmpl.Tags().ToSlice()),
+		Tags:        pq.StringArray(tmpl.Tags().ToSlice()),
 		CreatedAt:   tmpl.Timestamps().CreatedAt,
 		UpdatedAt:   tmpl.Timestamps().UpdatedAt,
 		DeletedAt:   deletedAt,
@@ -249,7 +250,7 @@ func (r *TemplateRepositoryImpl) fromTemplateModel(model *models.TemplateModel) 
 	}
 
 	// Convert tags
-	tags := template.NewTags([]string(model.Tags))
+	tags := template.NewTags(model.Tags)
 
 	// Convert version
 	version, err := template.NewVersionFromInt(model.Version)
