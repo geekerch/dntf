@@ -1,7 +1,7 @@
 -- Create channels table
 CREATE TABLE IF NOT EXISTS channels (
     id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
     description VARCHAR(500) DEFAULT '',
     enabled BOOLEAN NOT NULL DEFAULT true,
     channel_type VARCHAR(50) NOT NULL,
@@ -41,3 +41,7 @@ ALTER TABLE channels ADD CONSTRAINT check_retry_attempts
 -- Add constraint for retry_delay
 ALTER TABLE channels ADD CONSTRAINT check_retry_delay 
     CHECK (retry_delay >= 0);
+
+-- Add unique constraint on name for non-deleted channels
+CREATE UNIQUE INDEX IF NOT EXISTS idx_channels_name_unique 
+    ON channels(name) WHERE deleted_at IS NULL;

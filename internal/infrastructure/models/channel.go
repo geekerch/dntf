@@ -4,6 +4,8 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -83,9 +85,30 @@ func (s *StringArray) Scan(value interface{}) error {
 
 	switch v := value.(type) {
 	case []byte:
-		return json.Unmarshal(v, s)
+		// PostgreSQL returns array as string like "{a,b,c}"
+		// Need to parse this string into a Go slice
+		str := string(v)
+		// Remove curly braces and split by comma
+		str = strings.TrimPrefix(str, "{")
+		str = strings.TrimSuffix(str, "}")
+		if str == "" {
+			*s = []string{}
+			return nil
+		}
+		// This split is simplistic and doesn't handle commas within quoted strings
+		// For robust parsing, consider a dedicated PostgreSQL array parser library
+		*s = strings.Split(str, ",")
+		return nil
 	case string:
-		return json.Unmarshal([]byte(v), s)
+		str := v
+		str = strings.TrimPrefix(str, "{")
+		str = strings.TrimSuffix(str, "}")
+		if str == "" {
+			*s = []string{}
+			return nil
+		}
+		*s = strings.Split(str, ",")
+		return nil
 	default:
 		return errors.New("cannot scan into StringArray")
 	}
@@ -96,5 +119,11 @@ func (s StringArray) Value() (driver.Value, error) {
 	if s == nil {
 		return "{}", nil
 	}
-	return json.Marshal(s)
+	// Format as PostgreSQL array literal: '{element1,element2}'
+	// Escape double quotes within the string and wrap in double quotes
+	var quoted []string
+	for _, str := range s {
+		quoted = append(quoted, fmt.Sprintf("\"%s\"", strings.ReplaceAll(str, "\"", "\\\"")))
+	}
+	return fmt.Sprintf("{%s}", strings.Join(quoted, ",")), nil
 }
