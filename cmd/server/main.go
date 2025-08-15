@@ -68,20 +68,20 @@ func main() {
 		zap.String("server_address", cfg.GetServerAddress()))
 
 	// Initialize database
-	db, err := database.NewPostgresDB(&cfg.Database)
+	db, err := database.NewGormDB(&cfg.Database)
 	if err != nil {
 		log.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
 
 	log.Info("Database connected successfully",
+		zap.String("type", cfg.Database.Type),
 		zap.String("host", cfg.Database.Host),
 		zap.Int("port", cfg.Database.Port),
 		zap.String("database", cfg.Database.DBName))
 
-	// Run database migrations
-	// if err := db.RunMigrations("./migrations"); err != nil {
-	if err := db.RunMigrations("../../migrations"); err != nil {
+	// Run GORM migrations
+	if err := db.RunMigrations(); err != nil {
 		log.Fatal("Failed to run database migrations", zap.Error(err))
 	}
 	log.Info("Database migrations completed successfully")
@@ -239,7 +239,7 @@ type Container struct {
 }
 
 // buildContainer creates and wires all dependencies
-func buildContainer(db *database.PostgresDB, natsClient *messaging.NATSClient, log *logger.Logger, cfg *config.Config) *Container {
+func buildContainer(db *database.GormDB, natsClient *messaging.NATSClient, log *logger.Logger, cfg *config.Config) *Container {
 	// Initialize repositories
 	channelRepo := repository.NewChannelRepositoryImpl(db.DB)
 	templateRepo := repository.NewTemplateRepositoryImpl(db.DB)

@@ -2,24 +2,22 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"strings"
 
-	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
+	"gorm.io/gorm"
 
 	"notification/internal/domain/shared"
 	"notification/internal/domain/template"
+	"notification/internal/infrastructure/models"
 )
 
 // TemplateRepositoryImpl implements template.TemplateRepository interface
 type TemplateRepositoryImpl struct {
-	db *sqlx.DB
+	db *gorm.DB
 }
 
 // NewTemplateRepositoryImpl creates a new template repository implementation
-func NewTemplateRepositoryImpl(db *sqlx.DB) *TemplateRepositoryImpl {
+func NewTemplateRepositoryImpl(db *gorm.DB) *TemplateRepositoryImpl {
 	return &TemplateRepositoryImpl{
 		db: db,
 	}

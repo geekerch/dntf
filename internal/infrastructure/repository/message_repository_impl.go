@@ -2,23 +2,23 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 
 	"notification/internal/domain/channel"
 	"notification/internal/domain/message"
+	"notification/internal/infrastructure/models"
 )
 
 // MessageRepositoryImpl implements message.MessageRepository interface
 type MessageRepositoryImpl struct {
-	db *sqlx.DB
+	db *gorm.DB
 }
 
 // NewMessageRepositoryImpl creates a new message repository implementation
-func NewMessageRepositoryImpl(db *sqlx.DB) *MessageRepositoryImpl {
+func NewMessageRepositoryImpl(db *gorm.DB) *MessageRepositoryImpl {
 	return &MessageRepositoryImpl{
 		db: db,
 	}

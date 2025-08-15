@@ -26,6 +26,7 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
+	Type         string `json:"type"`         // postgres, sqlite, sqlserver
 	Host         string `json:"host"`
 	Port         int    `json:"port"`
 	User         string `json:"user"`
@@ -66,6 +67,7 @@ func Load() (*Config, error) {
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 30),
 		},
 		Database: DatabaseConfig{
+			Type:         getEnv("DB_TYPE", "postgres"),
 			Host:         getEnv("DB_HOST", "localhost"),
 			Port:         getEnvAsInt("DB_PORT", 5432),
 			User:         getEnv("DB_USER", "postgres"),
@@ -100,15 +102,29 @@ func Load() (*Config, error) {
 
 // Validate validates the configuration
 func (c *Config) Validate() error {
-	if c.Database.Password == "" {
-		return fmt.Errorf("database password is required")
+	// Validate database type
+	validDBTypes := map[string]bool{
+		"postgres":   true,
+		"postgresql": true,
+		"sqlite":     true,
+		"sqlserver":  true,
+		"mssql":      true,
+	}
+	if !validDBTypes[c.Database.Type] {
+		return fmt.Errorf("unsupported database type: %s", c.Database.Type)
+	}
+
+	// For non-SQLite databases, password is required
+	if c.Database.Type != "sqlite" && c.Database.Password == "" {
+		return fmt.Errorf("database password is required for %s", c.Database.Type)
 	}
 
 	if c.Server.Port <= 0 || c.Server.Port > 65535 {
 		return fmt.Errorf("invalid server port: %d", c.Server.Port)
 	}
 
-	if c.Database.Port <= 0 || c.Database.Port > 65535 {
+	// For non-SQLite databases, validate port
+	if c.Database.Type != "sqlite" && (c.Database.Port <= 0 || c.Database.Port > 65535) {
 		return fmt.Errorf("invalid database port: %d", c.Database.Port)
 	}
 
