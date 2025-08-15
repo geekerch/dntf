@@ -18,31 +18,31 @@ import (
 
 // Server represents the presentation layer server
 type Server struct {
-	httpServer     *http.Server
-	natsManager    *natshandlers.HandlerManager
-	router         *gin.Engine
-	config         *ServerConfig
+	httpServer  *http.Server
+	natsManager *natshandlers.HandlerManager
+	router      *gin.Engine
+	config      *ServerConfig
 }
 
 // ServerConfig holds the server configuration
 type ServerConfig struct {
 	HTTPPort    string
 	HTTPTimeout time.Duration
-	
+
 	// HTTP handlers
 	ChannelHandler     *handlers.ChannelHandler
 	CQRSChannelHandler *handlers.CQRSChannelHandler
 	TemplateHandler    *handlers.TemplateHandler
 	MessageHandler     *handlers.MessageHandler
-	
+
 	// CQRS handlers
 	CQRSTemplateHandler *handlers.CQRSTemplateHandler
 	CQRSMessageHandler  *handlers.CQRSMessageHandler
-	
+
 	// NATS handler manager
 	NATSManager     *natshandlers.HandlerManager
 	CQRSNATSHandler *natshandlers.CQRSChannelNATSHandler
-	
+
 	// Middleware configuration
 	MiddlewareConfig *middleware.MiddlewareConfig
 }
@@ -51,13 +51,13 @@ type ServerConfig struct {
 func NewServer(config *ServerConfig) *Server {
 	// Setup HTTP router
 	routerConfig := &routes.RouterConfig{
-		ChannelHandler:     config.ChannelHandler,
-		CQRSChannelHandler: config.CQRSChannelHandler,
-		TemplateHandler:    config.TemplateHandler,
-		MessageHandler:     config.MessageHandler,
+		ChannelHandler:      config.ChannelHandler,
+		CQRSChannelHandler:  config.CQRSChannelHandler,
+		TemplateHandler:     config.TemplateHandler,
+		MessageHandler:      config.MessageHandler,
 		CQRSTemplateHandler: config.CQRSTemplateHandler,
 		CQRSMessageHandler:  config.CQRSMessageHandler,
-		MiddlewareConfig:   config.MiddlewareConfig,
+		MiddlewareConfig:    config.MiddlewareConfig,
 	}
 	router := routes.SetupRouter(routerConfig)
 
@@ -92,10 +92,12 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// Register CQRS NATS handlers
 	if s.config.CQRSNATSHandler != nil {
-		if err := s.config.CQRSNATSHandler.RegisterHandlers(); err != nil {
-			return fmt.Errorf("failed to register CQRS NATS handlers: %w", err)
-		}
-		logger.Info("CQRS NATS handlers registered successfully")
+		/*
+			if err := s.config.CQRSNATSHandler.RegisterHandlers(); err != nil {
+				return fmt.Errorf("failed to register CQRS NATS handlers: %w", err)
+			}
+			logger.Info("CQRS NATS handlers registered successfully")
+		*/
 	}
 
 	// Start HTTP server in a goroutine
