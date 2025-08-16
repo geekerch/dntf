@@ -32,8 +32,15 @@ func (c *SendMessageCommand) Validate() error {
 		return fmt.Errorf("request cannot be nil")
 	}
 	
-	if c.Request.ChannelID == "" {
-		return fmt.Errorf("channel ID is required")
+	if len(c.Request.ChannelIDs) == 0 {
+		return fmt.Errorf("at least one channel ID is required")
+	}
+	
+	// Validate channel IDs are not empty
+	for i, channelID := range c.Request.ChannelIDs {
+		if channelID == "" {
+			return fmt.Errorf("channel ID at index %d cannot be empty", i)
+		}
 	}
 	
 	if c.Request.TemplateID == "" {

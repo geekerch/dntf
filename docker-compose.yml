@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./.env
+    depends_on:
+      - postgres
+      - nats
+
+  postgres:
+    image: postgres:13-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-channel_api}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nats:
+    image: nats:2.9-alpine
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    # To use a custom config file, uncomment the following lines
+    # command: "-c /etc/nats/nats-server.conf"
+    # volumes:
+    #   - ./nats-server.conf:/etc/nats/nats-server.conf
+
+volumes:
+  postgres_data:

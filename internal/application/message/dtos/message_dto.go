@@ -9,7 +9,7 @@ import (
 
 // SendMessageRequest represents the request to send a message.
 type SendMessageRequest struct {
-	ChannelID        string                     `json:"channelId" validate:"required"`
+	ChannelIDs       []string                   `json:"channelIds" validate:"required,min=1"`
 	TemplateID       string                     `json:"templateId" validate:"required"`
 	Recipients       []string                   `json:"recipients" validate:"required,min=1"`
 	Variables        map[string]interface{}     `json:"variables,omitempty"`

@@ -45,7 +45,7 @@ func NewChannel(
 	if commonSettings == nil {
 		return nil, errors.New("common settings is required")
 	}
-	
+
 	// Set default values
 	if description == nil {
 		description, _ = NewDescription("")
@@ -62,6 +62,63 @@ func NewChannel(
 
 	return &Channel{
 		id:             NewChannelID(),
+		name:           name,
+		description:    description,
+		enabled:        enabled,
+		channelType:    channelType,
+		templateID:     templateID,
+		commonSettings: commonSettings,
+		config:         config,
+		recipients:     recipients,
+		tags:           tags,
+		timestamps:     shared.NewTimestamps(),
+		lastUsed:       nil,
+	}, nil
+}
+
+// NewChannelWithID creates a new channel with a given ID
+func NewChannelWithID(
+	id *ChannelID,
+	name *ChannelName,
+	description *Description,
+	enabled bool,
+	channelType shared.ChannelType,
+	templateID *template.TemplateID,
+	commonSettings *shared.CommonSettings,
+	config *ChannelConfig,
+	recipients *Recipients,
+	tags *Tags,
+) (*Channel, error) {
+	// Validate required fields
+	if id == nil {
+		return nil, errors.New("channel ID is required")
+	}
+	if name == nil {
+		return nil, errors.New("channel name is required")
+	}
+	if !channelType.IsValid() {
+		return nil, errors.New("invalid channel type")
+	}
+	if commonSettings == nil {
+		return nil, errors.New("common settings is required")
+	}
+
+	// Set default values
+	if description == nil {
+		description, _ = NewDescription("")
+	}
+	if config == nil {
+		config = NewChannelConfig(nil)
+	}
+	if recipients == nil {
+		recipients = NewRecipients(nil)
+	}
+	if tags == nil {
+		tags = NewTags(nil)
+	}
+
+	return &Channel{
+		id:             id,
 		name:           name,
 		description:    description,
 		enabled:        enabled,

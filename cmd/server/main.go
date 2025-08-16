@@ -263,7 +263,7 @@ func buildContainer(db *database.GormDB, natsClient *messaging.NATSClient, log *
 	)
 
 	// Initialize channel use cases
-	createChannelUseCase := usecases.NewCreateChannelUseCase(channelRepo, templateRepo, channelValidator)
+	createChannelUseCase := usecases.NewCreateChannelUseCase(channelRepo, templateRepo, channelValidator, cfg)
 	getChannelUseCase := usecases.NewGetChannelUseCase(channelRepo)
 	listChannelsUseCase := usecases.NewListChannelsUseCase(channelRepo)
 	updateChannelUseCase := usecases.NewUpdateChannelUseCase(channelRepo, channelValidator)
@@ -277,7 +277,7 @@ func buildContainer(db *database.GormDB, natsClient *messaging.NATSClient, log *
 	deleteTemplateUseCase := templateusecases.NewDeleteTemplateUseCase(templateRepo)
 
 	// Initialize message use cases
-	sendMessageUseCase := messageusecases.NewSendMessageUseCase(messageRepo, channelRepo, templateRepo, messageSender)
+	sendMessageUseCase := messageusecases.NewSendMessageUseCase(messageRepo, channelRepo, templateRepo, messageSender, cfg)
 	getMessageUseCase := messageusecases.NewGetMessageUseCase(messageRepo)
 	listMessagesUseCase := messageusecases.NewListMessagesUseCase(messageRepo)
 

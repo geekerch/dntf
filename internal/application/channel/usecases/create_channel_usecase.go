@@ -64,8 +64,20 @@ func (uc *CreateChannelUseCase) Execute(ctx context.Context, request *dtos.Creat
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 4. Create a channel entity
-	ch, err := channel.NewChannel(
+	// 4. Forward to legacy system to get the channel ID
+	groupID, err := uc.forwardToLegacySystem(ctx, domainObjects, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to forward to legacy system: %w", err)
+	}
+
+	channelID, err := channel.NewChannelIDFromString(groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create channel ID from group ID: %w", err)
+	}
+
+	// 5. Create a channel entity with the ID from the legacy system
+	ch, err := channel.NewChannelWithID(
+		channelID,
 		domainObjects.Name,
 		domainObjects.Description,
 		request.Enabled,
@@ -80,19 +92,12 @@ func (uc *CreateChannelUseCase) Execute(ctx context.Context, request *dtos.Creat
 		return nil, fmt.Errorf("failed to create channel: %w", err)
 	}
 
-	// 5. Persist
+	// 6. Persist
 	if err := uc.channelRepo.Save(ctx, ch); err != nil {
 		return nil, fmt.Errorf("failed to save channel: %w", err)
 	}
 
-	//Forward to the legacy notification system.
-	if err := uc.forwardToLegacySystem(ctx, ch); err != nil {
-		// For now, we'll treat forwarding errors as fatal.
-		// Depending on business requirements, this could be changed to just logging.
-		return nil, fmt.Errorf("failed to forward to legacy system: %w", err)
-	}
-
-	// 6. Convert to response DTO
+	// 7. Convert to response DTO
 	response := uc.convertToResponse(ch)
 	return response, nil
 }
@@ -241,15 +246,15 @@ func (uc *CreateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Cha
 	}
 }
 
-func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, ch *channel.Channel) error {
+func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, domainObjects *DomainObjects, request *dtos.CreateChannelRequest) (string, error) {
 	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups"
 	bearerToken := uc.config.LegacySystem.Token
 
 	// 1. Construct the request body for the legacy system
 	legacyReq := LegacyChannelRequest{
-		Name:        ch.Name().String(),
-		Description: ch.Description().String(),
-		Type:        string(ch.ChannelType()),
+		Name:        domainObjects.Name.String(),
+		Description: domainObjects.Description.String(),
+		Type:        string(domainObjects.ChannelType),
 		LevelName:   "Critical", // Assuming this is a default or derived value
 		Config:      LegacyConfig{},
 		SendList:    []SendListItem{},
@@ -257,17 +262,17 @@ func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, ch *c
 
 	// 1a. Fetch template if TemplateID exists
 	var foundTemplate *template.Template
-	if ch.TemplateID() != nil {
+	if domainObjects.TemplateID != nil {
 		var err error
-		foundTemplate, err = uc.templateRepo.FindByID(ctx, ch.TemplateID())
+		foundTemplate, err = uc.templateRepo.FindByID(ctx, domainObjects.TemplateID)
 		if err != nil {
 			// Decide if a missing template is a fatal error. For now, let's assume it is.
-			return fmt.Errorf("failed to find template with ID %s: %w", ch.TemplateID().String(), err)
+			return "", fmt.Errorf("failed to find template with ID %s: %w", domainObjects.TemplateID.String(), err)
 		}
 	}
 
 	// 2. Populate Config from ch.Config() and template
-	configMap := ch.Config().ToMap()
+	configMap := domainObjects.Config.ToMap()
 	if host, ok := configMap["host"].(string); ok {
 		legacyReq.Config.Host = host
 	}
@@ -305,7 +310,7 @@ func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, ch *c
 	}
 
 	// 3. Populate SendList from ch.Recipients()
-	recipientDTOs := dtos.FromRecipientsSlice(ch.Recipients().ToSlice())
+	recipientDTOs := request.Recipients
 	for _, r := range recipientDTOs {
 		firstName := r.Name
 		lastName := ""
@@ -325,13 +330,13 @@ func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, ch *c
 	// 4. Marshal the request body to JSON
 	reqBody, err := json.Marshal(legacyReq)
 	if err != nil {
-		return fmt.Errorf("failed to marshal legacy request body: %w", err)
+		return "", fmt.Errorf("failed to marshal legacy request body: %w", err)
 	}
 
 	// 5. Create and send the HTTP POST request
 	req, err := http.NewRequestWithContext(ctx, "POST", legacyURL, bytes.NewBuffer(reqBody))
 	if err != nil {
-		return fmt.Errorf("failed to create legacy http request: %w", err)
+		return "", fmt.Errorf("failed to create legacy http request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+bearerToken)
 	req.Header.Set("Content-Type", "application/json")
@@ -339,15 +344,25 @@ func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, ch *c
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send request to legacy system: %w", err)
+		return "", fmt.Errorf("failed to send request to legacy system: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// 6. Check response status
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("legacy system returned error status %d: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("legacy system returned error status %d: %s", resp.StatusCode, string(body))
 	}
 
-	return nil
+	// 7. Parse the response
+	var legacyResp struct {
+		GroupID string `json:"groupId"`
+		Name    string `json:"name"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&legacyResp); err != nil {
+		return "", fmt.Errorf("failed to decode legacy response body: %w", err)
+	}
+
+	return legacyResp.GroupID, nil
 }

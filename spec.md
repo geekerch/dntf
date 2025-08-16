@@ -3,6 +3,9 @@
 3. 都沒有問題後，把程式commit到git上，要寫上註解做了哪些處理
 4. 回覆我時使用正體中文
 
-
+本次要做的事
+func (h *MessageNATSHandler) handleSendMessage(msg *nats.Msg) {
+1. 改寫internal/infrastructure/presentation/message_nat_handler.go中的handleSendMessage。 在82行原本是調用response, err := h.sendUseCase.Execute(ctx, &request)。現在加上Forward這隻，改寫成先轉導到舊系統處理。目前Forward實做到一半，把他完成。
+然後把我原本的channelId改成channelIds，實現可以帶多個channelId
 
 
