@@ -25,17 +25,18 @@ func NewCQRSChannelHandler(cqrsFacade *cqrs.CQRSFacade) *CQRSChannelHandler {
 	}
 }
 
-// CreateChannel handles POST /api/v1/channels using CQRS
+// CreateChannel handles POST /api/v2/channels using CQRS
 // @Summary      Create a new channel (CQRS)
-// @Description  Creates a new channel with the provided details using CQRS.
-// @Tags         channels
+// @Description  Creates a new channel with the provided details using CQRS pattern.
+// @Tags         channels-cqrs
 // @Accept       json
 // @Produce      json
 // @Param        request body dtos.CreateChannelRequest true "Create Channel Request"
-// @Success      201  {object}  dtos.CreateChannelResponse
-// @Failure      400  {object}  httputil.HTTPError "Bad Request - Invalid input or validation error"
-// @Failure      500  {object}  httputil.HTTPError "Internal Server Error"
-// @Router       /api/v1/channels [post]
+// @Success      201  {object}  map[string]interface{} "Success response with channel data"
+// @Failure      400  {object}  map[string]interface{} "Bad Request - Invalid input or validation error"
+// @Failure      500  {object}  map[string]interface{} "Internal Server Error"
+// @Security     ApiKeyAuth
+// @Router       /api/v2/channels [post]
 func (h *CQRSChannelHandler) CreateChannel(c *gin.Context) {
 	var request dtos.CreateChannelRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -90,17 +91,22 @@ func (h *CQRSChannelHandler) CreateChannel(c *gin.Context) {
 	c.JSON(http.StatusCreated, result.Data)
 }
 
-// GetChannel handles GET /api/v1/channels/:id using CQRS
+// GetChannel handles GET /api/v2/channels/:id using CQRS
 // @Summary      Get a channel by ID (CQRS)
 // @Description  Retrieves a single channel's details using its unique identifier via CQRS.
-// @Tags         channels
+// @Tags         channels-cqrs
 // @Accept       json
 // @Produce      json
 // @Param        id   path      string  true  "Channel ID"
-// @Success      200  {object}  dtos.GetChannelResponse
-// @Failure      400  {object}  httputil.HTTPError "Bad Request - Invalid channel ID format"
-// @Failure      404  {object}  httputil.HTTPError "Not Found - Channel with specified ID does not exist"
-// @Failure      500  {object}  httputil.HTTPError "Internal Server Error"
+// @Success      200  {object}  map[string]interface{} "Success response with channel data"
+// @Failure      400  {object}  map[string]interface{} "Bad Request - Invalid channel ID format"
+// @Failure      404  {object}  map[string]interface{} "Not Found - Channel with specified ID does not exist"
+// @Failure      500  {object}  map[string]interface{} "Internal Server Error"
+// @Security     ApiKeyAuth
+// @Router       /api/v2/channels/{id} [get]
+// @Failure      400  {object}  map[string]interface{} "Bad Request - Invalid channel ID format"
+// @Failure      404  {object}  map[string]interface{} "Not Found - Channel with specified ID does not exist"
+// @Failure      500  {object}  map[string]interface{} "Internal Server Error"
 // @Router       /api/v1/channels/{id} [get]
 func (h *CQRSChannelHandler) GetChannel(c *gin.Context) {
 	channelID := c.Param("id")
@@ -170,9 +176,9 @@ func (h *CQRSChannelHandler) GetChannel(c *gin.Context) {
 // @Param        enabled       query      boolean false  "Filter by enabled status"
 // @Param        sortField     query      string  false  "Field to sort by"
 // @Param        sortOrder     query      string  false  "Sort order (asc or desc)"  default(asc)
-// @Success      200  {object}  dtos.ListChannelsResponse
-// @Failure      400  {object}  httputil.HTTPError "Bad Request - Invalid query parameters"
-// @Failure      500  {object}  httputil.HTTPError "Internal Server Error"
+// @Success      200  {object}  map[string]interface{} "Success response with channels list"
+// @Failure      400  {object}  map[string]interface{} "Bad Request - Invalid query parameters"
+// @Failure      500  {object}  map[string]interface{} "Internal Server Error"
 // @Router       /api/v1/channels [get]
 func (h *CQRSChannelHandler) ListChannels(c *gin.Context) {
 	// Create query
@@ -264,10 +270,10 @@ func (h *CQRSChannelHandler) ListChannels(c *gin.Context) {
 // @Produce      json
 // @Param        id   path      string  true  "Channel ID"
 // @Param        request body dtos.UpdateChannelRequest true "Update Channel Request"
-// @Success      200  {object}  dtos.UpdateChannelResponse
-// @Failure      400  {object}  httputil.HTTPError "Bad Request - Invalid input or validation error"
-// @Failure      404  {object}  httputil.HTTPError "Not Found - Channel with specified ID does not exist"
-// @Failure      500  {object}  httputil.HTTPError "Internal Server Error"
+// @Success      200  {object}  map[string]interface{} "Success response with updated channel data"
+// @Failure      400  {object}  map[string]interface{} "Bad Request - Invalid input or validation error"
+// @Failure      404  {object}  map[string]interface{} "Not Found - Channel with specified ID does not exist"
+// @Failure      500  {object}  map[string]interface{} "Internal Server Error"
 // @Router       /api/v1/channels/{id} [put]
 func (h *CQRSChannelHandler) UpdateChannel(c *gin.Context) {
 	channelID := c.Param("id")
@@ -340,10 +346,10 @@ func (h *CQRSChannelHandler) UpdateChannel(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        id   path      string  true  "Channel ID"
-// @Success      200  {object}  dtos.DeleteChannelResponse
-// @Failure      400  {object}  httputil.HTTPError "Bad Request - Invalid channel ID format"
-// @Failure      404  {object}  httputil.HTTPError "Not Found - Channel with specified ID does not exist"
-// @Failure      500  {object}  httputil.HTTPError "Internal Server Error"
+// @Success      200  {object}  map[string]interface{} "Success response with deletion confirmation"
+// @Failure      400  {object}  map[string]interface{} "Bad Request - Invalid channel ID format"
+// @Failure      404  {object}  map[string]interface{} "Not Found - Channel with specified ID does not exist"
+// @Failure      500  {object}  map[string]interface{} "Internal Server Error"
 // @Router       /api/v1/channels/{id} [delete]
 func (h *CQRSChannelHandler) DeleteChannel(c *gin.Context) {
 	channelID := c.Param("id")

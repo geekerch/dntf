@@ -1,4 +1,198 @@
 basePath: /api/v1
+definitions:
+  notification_internal_application_channel_dtos.CommonSettingsDTO:
+    properties:
+      retryAttempts:
+        minimum: 0
+        type: integer
+      retryDelay:
+        minimum: 0
+        type: integer
+      timeout:
+        minimum: 1
+        type: integer
+    required:
+    - timeout
+    type: object
+  notification_internal_application_channel_dtos.CreateChannelRequest:
+    properties:
+      channelName:
+        type: string
+      channelType:
+        type: string
+      commonSettings:
+        $ref: '#/definitions/notification_internal_application_channel_dtos.CommonSettingsDTO'
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      enabled:
+        type: boolean
+      recipients:
+        items:
+          $ref: '#/definitions/notification_internal_application_channel_dtos.RecipientDTO'
+        type: array
+      tags:
+        items:
+          type: string
+        type: array
+      templateId:
+        type: string
+    required:
+    - channelName
+    - channelType
+    - commonSettings
+    - config
+    type: object
+  notification_internal_application_channel_dtos.RecipientDTO:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      target:
+        type: string
+      type:
+        type: string
+    required:
+    - name
+    - type
+    type: object
+  notification_internal_application_channel_dtos.UpdateChannelRequest:
+    properties:
+      channelId:
+        type: string
+      channelName:
+        type: string
+      channelType:
+        type: string
+      commonSettings:
+        $ref: '#/definitions/notification_internal_application_channel_dtos.CommonSettingsDTO'
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      enabled:
+        type: boolean
+      recipients:
+        items:
+          $ref: '#/definitions/notification_internal_application_channel_dtos.RecipientDTO'
+        type: array
+      tags:
+        items:
+          type: string
+        type: array
+      templateId:
+        type: string
+    required:
+    - channelName
+    - channelType
+    - commonSettings
+    - config
+    type: object
+  notification_internal_application_message_dtos.SendMessageRequest:
+    properties:
+      channelIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      channelOverrides:
+        $ref: '#/definitions/notification_internal_domain_message.ChannelOverrides'
+      recipients:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      settings:
+        $ref: '#/definitions/notification_internal_domain_shared.CommonSettings'
+      templateId:
+        type: string
+      variables:
+        additionalProperties: true
+        type: object
+    required:
+    - channelIds
+    - recipients
+    - templateId
+    type: object
+  notification_internal_application_template_dtos.CreateTemplateRequest:
+    properties:
+      channelType:
+        $ref: '#/definitions/notification_internal_domain_shared.ChannelType'
+      content:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 1
+        type: string
+      settings:
+        $ref: '#/definitions/notification_internal_domain_shared.CommonSettings'
+      subject:
+        maxLength: 200
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      variables:
+        items:
+          type: string
+        type: array
+    required:
+    - channelType
+    - content
+    - name
+    type: object
+  notification_internal_application_template_dtos.UpdateTemplateRequest:
+    properties:
+      content:
+        minLength: 1
+        type: string
+      name:
+        maxLength: 100
+        minLength: 1
+        type: string
+      settings:
+        $ref: '#/definitions/notification_internal_domain_shared.CommonSettings'
+      subject:
+        maxLength: 200
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      variables:
+        items:
+          type: string
+        type: array
+    type: object
+  notification_internal_domain_message.ChannelOverrides:
+    type: object
+  notification_internal_domain_shared.ChannelType:
+    enum:
+    - email
+    - slack
+    - sms
+    type: string
+    x-enum-varnames:
+    - ChannelTypeEmail
+    - ChannelTypeSlack
+    - ChannelTypeSMS
+  notification_internal_domain_shared.CommonSettings:
+    properties:
+      retryAttempts:
+        description: number of retry attempts
+        type: integer
+      retryDelay:
+        description: retry delay in milliseconds
+        type: integer
+      timeout:
+        description: timeout in milliseconds
+        type: integer
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -12,5 +206,796 @@ info:
   termsOfService: http://swagger.io/terms/
   title: Event Center API
   version: "1.0"
-paths: {}
+paths:
+  /api/v1/channels:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all channels, with optional filtering by channel
+        type and tags, and pagination, using CQRS.
+      parameters:
+      - description: Filter by channel type (e.g., email, sms)
+        in: query
+        name: channelType
+        type: string
+      - collectionFormat: csv
+        description: Filter by tags (comma-separated)
+        in: query
+        items:
+          type: string
+        name: tags
+        type: array
+      - default: 0
+        description: Number of records to skip for pagination
+        in: query
+        name: skipCount
+        type: integer
+      - default: 20
+        description: Maximum number of records to return per page (1-100)
+        in: query
+        name: maxResultCount
+        type: integer
+      - description: Filter by enabled status
+        in: query
+        name: enabled
+        type: boolean
+      - description: Field to sort by
+        in: query
+        name: sortField
+        type: string
+      - default: asc
+        description: Sort order (asc or desc)
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with channels list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request - Invalid query parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List all channels (CQRS)
+      tags:
+      - channels
+    post:
+      consumes:
+      - application/json
+      description: Creates a new channel with the provided details.
+      parameters:
+      - description: Create Channel Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_channel_dtos.CreateChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success response with channel data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request - Invalid input or validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict - Channel with the same name already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new channel
+      tags:
+      - channels
+  /api/v1/channels/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a channel using its unique identifier via CQRS.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with deletion confirmation
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request - Invalid channel ID format
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found - Channel with specified ID does not exist
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a channel by ID (CQRS)
+      tags:
+      - channels
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a single channel's details using its unique identifier
+        via CQRS.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with channel data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request - Invalid channel ID format
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found - Channel with specified ID does not exist
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a channel by ID (CQRS)
+      tags:
+      - channels-cqrs
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing channel's details using its unique identifier
+        via CQRS.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Channel Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_channel_dtos.UpdateChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with updated channel data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request - Invalid input or validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found - Channel with specified ID does not exist
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update an existing channel (CQRS)
+      tags:
+      - channels
+  /api/v2/channels:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new channel with the provided details using CQRS pattern.
+      parameters:
+      - description: Create Channel Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_channel_dtos.CreateChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success response with channel data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request - Invalid input or validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new channel (CQRS)
+      tags:
+      - channels-cqrs
+  /api/v2/channels/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a single channel's details using its unique identifier
+        via CQRS.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with channel data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request - Invalid channel ID format
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found - Channel with specified ID does not exist
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a channel by ID (CQRS)
+      tags:
+      - channels-cqrs
+  /api/v2/messages:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of messages with optional filtering via CQRS pattern
+      parameters:
+      - description: Filter by channel ID
+        in: query
+        name: channelId
+        type: string
+      - description: Filter by message status
+        in: query
+        name: status
+        type: string
+      - default: 0
+        description: Number of items to skip
+        in: query
+        name: skipCount
+        type: integer
+      - default: 10
+        description: Maximum number of items to return
+        in: query
+        name: maxResultCount
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with messages list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List messages (CQRS)
+      tags:
+      - messages-cqrs
+  /api/v2/messages/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific message by its ID via CQRS pattern
+      parameters:
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with message data
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Message not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a message by ID (CQRS)
+      tags:
+      - messages-cqrs
+  /api/v2/messages/send:
+    post:
+      consumes:
+      - application/json
+      description: Send a message to multiple channels using a template via CQRS pattern
+      parameters:
+      - description: Send message request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_message_dtos.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success response with message data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Send a message (CQRS)
+      tags:
+      - messages-cqrs
+  /api/v2/templates:
+    post:
+      consumes:
+      - application/json
+      description: Create a new message template for a specific channel type via CQRS
+        pattern
+      parameters:
+      - description: Create template request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_template_dtos.CreateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Template created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new template (CQRS)
+      tags:
+      - templates-cqrs
+  /api/v2/templates/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific template by its ID via CQRS pattern
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with template data
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Template not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a template by ID (CQRS)
+      tags:
+      - templates-cqrs
+  /messages:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of messages with optional filtering
+      parameters:
+      - description: Filter by channel ID
+        in: query
+        name: channelId
+        type: string
+      - description: Filter by message status
+        in: query
+        name: status
+        type: string
+      - default: 0
+        description: Number of items to skip
+        in: query
+        name: skipCount
+        type: integer
+      - default: 20
+        description: Maximum number of items to return
+        in: query
+        name: maxResultCount
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with messages list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List messages
+      tags:
+      - messages
+    post:
+      consumes:
+      - application/json
+      description: Send a message to multiple channels using a template
+      parameters:
+      - description: Send message request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_message_dtos.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with message data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Send a message
+      tags:
+      - messages
+  /messages/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific message by its ID
+      parameters:
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with message data
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Message not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a message by ID
+      tags:
+      - messages
+  /templates:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of templates with optional filtering
+      parameters:
+      - description: Filter by channel type
+        in: query
+        name: channelType
+        type: string
+      - collectionFormat: csv
+        description: Filter by tags
+        in: query
+        items:
+          type: string
+        name: tags
+        type: array
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with templates list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List templates
+      tags:
+      - templates
+    post:
+      consumes:
+      - application/json
+      description: Create a new message template for a specific channel type
+      parameters:
+      - description: Create template request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_template_dtos.CreateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Template created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new template
+      tags:
+      - templates
+  /templates/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an existing template by its ID
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Template deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Template not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a template
+      tags:
+      - templates
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific template by its ID
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with template data
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Template not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a template by ID
+      tags:
+      - templates
+    put:
+      consumes:
+      - application/json
+      description: Update an existing template by its ID
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update template request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notification_internal_application_template_dtos.UpdateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Template updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Template not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update a template
+      tags:
+      - templates
 swagger: "2.0"

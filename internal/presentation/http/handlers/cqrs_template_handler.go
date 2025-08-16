@@ -24,6 +24,17 @@ func NewCQRSTemplateHandler(cqrsFacade *cqrs.CQRSFacade) *CQRSTemplateHandler {
 }
 
 // CreateTemplate handles POST /api/v2/templates
+// @Summary Create a new template (CQRS)
+// @Description Create a new message template for a specific channel type via CQRS pattern
+// @Tags templates-cqrs
+// @Accept json
+// @Produce json
+// @Param request body dtos.CreateTemplateRequest true "Create template request"
+// @Success 201 {object} map[string]interface{} "Template created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v2/templates [post]
 func (h *CQRSTemplateHandler) CreateTemplate(c *gin.Context) {
 	var req dtos.CreateTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -67,6 +78,17 @@ func (h *CQRSTemplateHandler) CreateTemplate(c *gin.Context) {
 }
 
 // GetTemplate handles GET /api/v2/templates/{id}
+// @Summary Get a template by ID (CQRS)
+// @Description Retrieve a specific template by its ID via CQRS pattern
+// @Tags templates-cqrs
+// @Accept json
+// @Produce json
+// @Param id path string true "Template ID"
+// @Success 200 {object} map[string]interface{} "Success response with template data"
+// @Failure 404 {object} map[string]interface{} "Template not found"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v2/templates/{id} [get]
 func (h *CQRSTemplateHandler) GetTemplate(c *gin.Context) {
 	id := c.Param("id")
 

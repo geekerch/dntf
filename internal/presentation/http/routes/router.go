@@ -42,6 +42,12 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 	middlewareManager.SetupMiddleware(router)
 
 	// Health check endpoint (public)
+	// @Summary Health check
+	// @Description Check if the API is running and healthy
+	// @Tags system
+	// @Produce json
+	// @Success 200 {object} models.HealthResponse "API is healthy"
+	// @Router /health [get]
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "healthy",
@@ -64,6 +70,12 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 	publicV1 := router.Group("/api/v1/public")
 	{
 		// Add public endpoints here if needed
+		// @Summary API information
+		// @Description Get information about the API and available endpoints
+		// @Tags system
+		// @Produce json
+		// @Success 200 {object} models.InfoResponse "API information"
+		// @Router /api/v1/public/info [get]
 		publicV1.GET("/info", func(c *gin.Context) {
 			c.JSON(200, gin.H{
 				"service": "notification-api",

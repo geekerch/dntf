@@ -24,6 +24,17 @@ func NewCQRSMessageHandler(cqrsFacade *cqrs.CQRSFacade) *CQRSMessageHandler {
 }
 
 // SendMessage handles POST /api/v2/messages/send
+// @Summary Send a message (CQRS)
+// @Description Send a message to multiple channels using a template via CQRS pattern
+// @Tags messages-cqrs
+// @Accept json
+// @Produce json
+// @Param request body dtos.SendMessageRequest true "Send message request"
+// @Success 201 {object} map[string]interface{} "Success response with message data"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v2/messages/send [post]
 func (h *CQRSMessageHandler) SendMessage(c *gin.Context) {
 	var req dtos.SendMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -67,6 +78,17 @@ func (h *CQRSMessageHandler) SendMessage(c *gin.Context) {
 }
 
 // GetMessage handles GET /api/v2/messages/{id}
+// @Summary Get a message by ID (CQRS)
+// @Description Retrieve a specific message by its ID via CQRS pattern
+// @Tags messages-cqrs
+// @Accept json
+// @Produce json
+// @Param id path string true "Message ID"
+// @Success 200 {object} map[string]interface{} "Success response with message data"
+// @Failure 404 {object} map[string]interface{} "Message not found"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v2/messages/{id} [get]
 func (h *CQRSMessageHandler) GetMessage(c *gin.Context) {
 	id := c.Param("id")
 
@@ -101,6 +123,20 @@ func (h *CQRSMessageHandler) GetMessage(c *gin.Context) {
 }
 
 // ListMessages handles GET /api/v2/messages
+// @Summary List messages (CQRS)
+// @Description Retrieve a list of messages with optional filtering via CQRS pattern
+// @Tags messages-cqrs
+// @Accept json
+// @Produce json
+// @Param channelId query string false "Filter by channel ID"
+// @Param status query string false "Filter by message status"
+// @Param skipCount query int false "Number of items to skip" default(0)
+// @Param maxResultCount query int false "Maximum number of items to return" default(10)
+// @Success 200 {object} map[string]interface{} "Success response with messages list"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v2/messages [get]
 func (h *CQRSMessageHandler) ListMessages(c *gin.Context) {
 	// Parse query parameters
 	channelID := c.Query("channelId")
