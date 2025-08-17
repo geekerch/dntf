@@ -135,26 +135,24 @@ func (c *ChannelConfig) ToMap() map[string]interface{} {
 // Recipient represents a message recipient
 type Recipient struct {
 	Name   string `json:"name"`
-	Email  string `json:"email,omitempty"`
 	Target string `json:"target,omitempty"`
 	Type   string `json:"type"`
 }
 
 // NewRecipient creates a new recipient
-func NewRecipient(name, email, target, recipientType string) (*Recipient, error) {
+func NewRecipient(name, target, recipientType string) (*Recipient, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("recipient name cannot be empty")
 	}
-	
+
 	recipientType = strings.TrimSpace(recipientType)
 	if recipientType == "" {
 		return nil, errors.New("recipient type cannot be empty")
 	}
-	
+
 	return &Recipient{
 		Name:   name,
-		Email:  email,
 		Target: target,
 		Type:   recipientType,
 	}, nil

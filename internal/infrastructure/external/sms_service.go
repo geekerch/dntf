@@ -86,7 +86,7 @@ func (s *SMSService) ValidateConfig(config *channel.ChannelConfig) error {
 	if provider, exists := config.Get("provider"); exists {
 		providerStr := strings.ToLower(fmt.Sprintf("%v", provider))
 		supportedProviders := []string{"twilio", "aws_sns", "nexmo", "messagebird"}
-		
+
 		isSupported := false
 		for _, supported := range supportedProviders {
 			if providerStr == supported {
@@ -94,7 +94,7 @@ func (s *SMSService) ValidateConfig(config *channel.ChannelConfig) error {
 				break
 			}
 		}
-		
+
 		if !isSupported {
 			return fmt.Errorf("unsupported SMS provider: %s. Supported providers: %v", providerStr, supportedProviders)
 		}
@@ -179,8 +179,6 @@ func (s *SMSService) preparePhoneNumbers(recipients *channel.Recipients) []strin
 		phoneNumber := ""
 		if recipient.Target != "" {
 			phoneNumber = recipient.Target
-		} else if recipient.Email != "" && s.isPhoneNumber(recipient.Email) {
-			phoneNumber = recipient.Email
 		}
 
 		if phoneNumber != "" {
@@ -258,7 +256,7 @@ func (s *SMSService) sendToPhoneNumber(ctx context.Context, config *SMSConfig, p
 func (s *SMSService) sendViaTwilio(ctx context.Context, config *SMSConfig, phoneNumber, message string) error {
 	// This is a simplified implementation
 	// In production, you would use the official Twilio SDK
-	
+
 	payload := map[string]string{
 		"From": config.From,
 		"To":   phoneNumber,
@@ -272,7 +270,7 @@ func (s *SMSService) sendViaTwilio(ctx context.Context, config *SMSConfig, phone
 func (s *SMSService) sendViaAWSSNS(ctx context.Context, config *SMSConfig, phoneNumber, message string) error {
 	// This is a simplified implementation
 	// In production, you would use the AWS SDK
-	
+
 	payload := map[string]interface{}{
 		"PhoneNumber": phoneNumber,
 		"Message":     message,
@@ -317,7 +315,7 @@ func (s *SMSService) sendHTTPRequest(ctx context.Context, config *SMSConfig, pay
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Set authentication based on provider
 	switch config.Provider {
 	case "twilio":

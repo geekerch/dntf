@@ -183,17 +183,17 @@ func (s *EmailService) prepareRecipients(recipients *channel.Recipients) *EmailR
 	}
 
 	for _, recipient := range recipients.ToSlice() {
-		if recipient.Email == "" {
+		if recipient.Target == "" {
 			continue
 		}
 
 		switch strings.ToLower(recipient.Type) {
 		case "to", "":
-			emailRecipients.To = append(emailRecipients.To, recipient.Email)
+			emailRecipients.To = append(emailRecipients.To, recipient.Target)
 		case "cc":
-			emailRecipients.CC = append(emailRecipients.CC, recipient.Email)
+			emailRecipients.CC = append(emailRecipients.CC, recipient.Target)
 		case "bcc":
-			emailRecipients.BCC = append(emailRecipients.BCC, recipient.Email)
+			emailRecipients.BCC = append(emailRecipients.BCC, recipient.Target)
 		}
 	}
 
@@ -206,15 +206,15 @@ func (s *EmailService) buildEmailMessage(config *SMTPConfig, recipients *EmailRe
 
 	// Headers
 	message.WriteString(fmt.Sprintf("From: %s\r\n", config.From))
-	
+
 	if len(recipients.To) > 0 {
 		message.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(recipients.To, ", ")))
 	}
-	
+
 	if len(recipients.CC) > 0 {
 		message.WriteString(fmt.Sprintf("CC: %s\r\n", strings.Join(recipients.CC, ", ")))
 	}
-	
+
 	message.WriteString(fmt.Sprintf("Subject: %s\r\n", content.Subject))
 	message.WriteString("MIME-Version: 1.0\r\n")
 	message.WriteString("Content-Type: text/html; charset=UTF-8\r\n")

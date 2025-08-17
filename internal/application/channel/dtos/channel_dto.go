@@ -1,8 +1,8 @@
 package dtos
 
 import (
-	"notification/internal/domain/shared"
 	"notification/internal/domain/channel"
+	"notification/internal/domain/shared"
 )
 
 // CreateChannelRequest is the DTO for creating a channel.
@@ -42,19 +42,19 @@ type ListChannelsRequest struct {
 
 // ChannelResponse is the DTO for a channel response.
 type ChannelResponse struct {
-	ChannelID      string            `json:"channelId"`
-	ChannelName    string            `json:"channelName"`
-	Description    string            `json:"description"`
-	Enabled        bool              `json:"enabled"`
-	ChannelType    string            `json:"channelType"`
-	TemplateID     string            `json:"templateId,omitempty"`
-	CommonSettings CommonSettingsDTO `json:"commonSettings"`
+	ChannelID      string                 `json:"channelId"`
+	ChannelName    string                 `json:"channelName"`
+	Description    string                 `json:"description"`
+	Enabled        bool                   `json:"enabled"`
+	ChannelType    string                 `json:"channelType"`
+	TemplateID     string                 `json:"templateId,omitempty"`
+	CommonSettings CommonSettingsDTO      `json:"commonSettings"`
 	Config         map[string]interface{} `json:"config"`
-	Recipients     []RecipientDTO    `json:"recipients"`
-	Tags           []string          `json:"tags"`
-	CreatedAt      int64             `json:"createdAt"`
-	UpdatedAt      int64             `json:"updatedAt"`
-	LastUsed       *int64            `json:"lastUsed,omitempty"`
+	Recipients     []RecipientDTO         `json:"recipients"`
+	Tags           []string               `json:"tags"`
+	CreatedAt      int64                  `json:"createdAt"`
+	UpdatedAt      int64                  `json:"updatedAt"`
+	LastUsed       *int64                 `json:"lastUsed,omitempty"`
 }
 
 // ChannelSummaryResponse is the DTO for a channel summary response (for list queries).
@@ -108,21 +108,19 @@ func FromCommonSettings(settings *shared.CommonSettings) CommonSettingsDTO {
 // RecipientDTO is the DTO for a recipient.
 type RecipientDTO struct {
 	Name   string `json:"name" binding:"required"`
-	Email  string `json:"email,omitempty"`
 	Target string `json:"target,omitempty"`
 	Type   string `json:"type" binding:"required"`
 }
 
 // ToRecipient converts to a domain object.
 func (dto RecipientDTO) ToRecipient() (*channel.Recipient, error) {
-	return channel.NewRecipient(dto.Name, dto.Email, dto.Target, dto.Type)
+	return channel.NewRecipient(dto.Name, dto.Target, dto.Type)
 }
 
 // FromRecipient creates a DTO from a domain object.
 func FromRecipient(recipient *channel.Recipient) RecipientDTO {
 	return RecipientDTO{
 		Name:   recipient.Name,
-		Email:  recipient.Email,
 		Target: recipient.Target,
 		Type:   recipient.Type,
 	}
