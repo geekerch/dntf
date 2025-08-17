@@ -298,8 +298,7 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		ID:        uuid.New().String(), // Legacy response doesn't provide a message ID
 		ChannelID: req.ChannelIDs[0],   // Use first channel ID for backward compatibility
 		Status:    status,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: time.Now().UnixMilli(),
 	}
 
 	return messageResponse, nil

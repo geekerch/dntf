@@ -310,7 +310,7 @@ func (h *ChannelNATSHandler) sendSuccessResponse(msg *nats.Msg, reqSeqId string,
 		RspSeqId:  rspId.String(),
 		Success:   true,
 		Data:      data,
-		Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().UnixMilli(),
 	}
 
 	responseBytes, err := json.Marshal(response)
@@ -336,7 +336,7 @@ func (h *ChannelNATSHandler) sendErrorResponse(msg *nats.Msg, requestID, code, m
 			Message: message,
 			Details: details,
 		},
-		Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().UnixMilli(),
 	}
 
 	responseBytes, err := json.Marshal(response)

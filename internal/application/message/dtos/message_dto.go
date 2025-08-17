@@ -1,20 +1,18 @@
 package dtos
 
 import (
-	"time"
-
 	"notification/internal/domain/message"
 	"notification/internal/domain/shared"
 )
 
 // SendMessageRequest represents the request to send a message.
 type SendMessageRequest struct {
-	ChannelIDs       []string                   `json:"channelIds" validate:"required,min=1"`
-	TemplateID       string                     `json:"templateId" validate:"required"`
-	Recipients       []string                   `json:"recipients" validate:"required,min=1"`
-	Variables        map[string]interface{}     `json:"variables,omitempty"`
-	ChannelOverrides *message.ChannelOverrides  `json:"channelOverrides,omitempty"`
-	Settings         *shared.CommonSettings     `json:"settings,omitempty"`
+	ChannelIDs       []string                  `json:"channelIds" validate:"required,min=1"`
+	TemplateID       string                    `json:"templateId" validate:"required"`
+	Recipients       []string                  `json:"recipients" validate:"required,min=1"`
+	Variables        map[string]interface{}    `json:"variables,omitempty"`
+	ChannelOverrides *message.ChannelOverrides `json:"channelOverrides,omitempty"`
+	Settings         *shared.CommonSettings    `json:"settings,omitempty"`
 }
 
 // ListMessagesRequest represents the request to list messages.
@@ -36,17 +34,16 @@ type ListMessagesResponse struct {
 
 // MessageResponse represents the response for a message.
 type MessageResponse struct {
-	ID               string                     `json:"id"`
-	ChannelID        string                     `json:"channelId"`
-	TemplateID       string                     `json:"templateId"`
-	Recipients       []string                   `json:"recipients"`
-	Variables        map[string]interface{}     `json:"variables,omitempty"`
-	ChannelOverrides *message.ChannelOverrides  `json:"channelOverrides,omitempty"`
-	Status           message.MessageStatus      `json:"status"`
-	Results          []*MessageResultResponse   `json:"results,omitempty"`
-	Settings         *shared.CommonSettings     `json:"settings,omitempty"`
-	CreatedAt        time.Time                  `json:"createdAt"`
-	UpdatedAt        time.Time                  `json:"updatedAt"`
+	ID               string                    `json:"id"`
+	ChannelID        string                    `json:"channelId"`
+	TemplateID       string                    `json:"templateId"`
+	Recipients       []string                  `json:"recipients"`
+	Variables        map[string]interface{}    `json:"variables,omitempty"`
+	ChannelOverrides *message.ChannelOverrides `json:"channelOverrides,omitempty"`
+	Status           message.MessageStatus     `json:"status"`
+	Results          []*MessageResultResponse  `json:"results,omitempty"`
+	Settings         *shared.CommonSettings    `json:"settings,omitempty"`
+	CreatedAt        int64                     `json:"createdAt"`
 }
 
 // MessageResultResponse represents the response for a message result.
@@ -54,7 +51,7 @@ type MessageResultResponse struct {
 	Recipient string                      `json:"recipient"`
 	Status    message.MessageResultStatus `json:"status"`
 	Error     string                      `json:"error,omitempty"`
-	SentAt    *time.Time                  `json:"sentAt,omitempty"`
+	SentAt    *int64                      `json:"sentAt,omitempty"`
 }
 
 // ToMessageResponse converts a message entity to a response DTO.
@@ -63,16 +60,12 @@ func ToMessageResponse(m *message.Message) *MessageResponse {
 		return nil
 	}
 
-	// Convert timestamp from Unix milliseconds to time.Time
-	createdAt := time.Unix(0, m.CreatedAt()*int64(time.Millisecond))
-
 	// Note: The current message entity structure doesn't match our DTO exactly
 	// We'll need to adapt based on what's available
 	response := &MessageResponse{
 		ID:        m.ID().String(),
 		Status:    m.Status(),
-		CreatedAt: createdAt,
-		UpdatedAt: createdAt, // Using same timestamp for now
+		CreatedAt: m.CreatedAt(),
 	}
 
 	// Get the first channel ID if available
@@ -98,14 +91,13 @@ func ToMessageResponse(m *message.Message) *MessageResponse {
 			response.Results[i] = &MessageResultResponse{
 				Status: result.Status(),
 			}
-			
+
 			if result.Error() != nil {
 				response.Results[i].Error = result.Error().Details
 			}
-			
+
 			if result.SentAt() != nil {
-				sentAt := time.Unix(0, *result.SentAt()*int64(time.Millisecond))
-				response.Results[i].SentAt = &sentAt
+				response.Results[i].SentAt = result.SentAt()
 			}
 		}
 	}
