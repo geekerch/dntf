@@ -303,6 +303,8 @@ func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, domai
 		// Fallback to configMap if no template
 		if emailSubject, ok := configMap["emailSubject"].(string); ok {
 			legacyReq.Config.EmailSubject = emailSubject
+		} else {
+			legacyReq.Config.EmailSubject = "Test subject"
 		}
 		if template, ok := configMap["template"].(string); ok {
 			legacyReq.Config.Template = template
