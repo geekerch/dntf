@@ -209,23 +209,23 @@ func (t *Template) MatchesType(channelType shared.ChannelType) bool {
 // GetAllVariables gets all variables in the template.
 func (t *Template) GetAllVariables() []string {
 	variables := make(map[string]bool)
-	
+
 	// Extract variables from the subject
 	for _, variable := range t.subject.ExtractVariables() {
 		variables[variable] = true
 	}
-	
+
 	// Extract variables from the content
 	for _, variable := range t.content.ExtractVariables() {
 		variables[variable] = true
 	}
-	
+
 	// Convert to slice
 	result := make([]string, 0, len(variables))
 	for variable := range variables {
 		result = append(result, variable)
 	}
-	
+
 	return result
 }
 
@@ -233,12 +233,12 @@ func (t *Template) GetAllVariables() []string {
 func (t *Template) ValidateVariables(providedVariables map[string]interface{}) []string {
 	requiredVariables := t.GetAllVariables()
 	missingVariables := make([]string, 0)
-	
+
 	for _, variable := range requiredVariables {
 		if _, exists := providedVariables[variable]; !exists {
 			missingVariables = append(missingVariables, variable)
 		}
 	}
-	
+
 	return missingVariables
 }

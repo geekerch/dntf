@@ -171,7 +171,7 @@ func (uc *SendMessageUseCase) Execute(ctx context.Context, req *dtos.SendMessage
 }
 
 // Forward sends a message via the legacy system.
-func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessageRequest) (*dtos.MessageResponse, error) {
+func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessageRequest) ([]*dtos.MessageResponse, error) {
 	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups/send" // This might need adjustment
 	bearerToken := uc.config.LegacySystem.Token
 
@@ -185,13 +185,16 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 	}
 
 	// 1. Get Template info
-	templateID, err := template.NewTemplateIDFromString(req.TemplateID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid template ID: %w", err)
-	}
-	templateEntity, err := uc.templateRepo.FindByID(ctx, templateID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find template: %w", err)
+	var templateEntity *template.Template
+	if req.TemplateID != "" {
+		templateID, err := template.NewTemplateIDFromString(req.TemplateID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid template ID: %w", err)
+		}
+		templateEntity, err = uc.templateRepo.FindByID(ctx, templateID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find template: %w", err)
+		}
 	}
 
 	// 2. Create legacy requests for each channel
@@ -219,16 +222,22 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 
 		legacyReq := LegacyMessageRequest{
 			GroupID:     channelIDStr,
-			Subject:     templateEntity.Subject().String(),
-			UseTemplate: req.TemplateID != "",
-			Message:     templateEntity.Content().String(),
 			Header:      "", // Assuming no header from SendMessageRequest
 			Footer:      "", // Assuming no footer from SendMessageRequest
+			UseTemplate: true,
 			Variables:   req.Variables,
 			SendList:    sendList,
 			Attachments: []LegacyAttachment{}, // Assuming no attachments from SendMessageRequest
+			Subject:     "test",
+			Message:     "test",
 		}
 
+		if templateEntity != nil {
+			legacyReq.UseTemplate = false
+			legacyReq.Subject = templateEntity.Subject().String()
+			legacyReq.Message = templateEntity.Content().String()
+
+		}
 		legacyRequests = append(legacyRequests, legacyReq)
 	}
 
@@ -271,35 +280,56 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		return nil, fmt.Errorf("legacy system returned an empty response array")
 	}
 
-	// 7. Process all responses and determine overall status
-	status := message.MessageStatusSuccess
-	var errorMessages []string
-	var processedChannelIDs []string
+	// 7. Process responses - individual channel status will be handled in response creation
+
+	// 8. Create response array with information from all processed channels
+	var messageResponses []*dtos.MessageResponse
+	currentTime := time.Now().UnixMilli()
 
 	for _, result := range legacyResp {
-		processedChannelIDs = append(processedChannelIDs, result.GroupID)
+		// Determine status for this specific channel
+		channelStatus := message.MessageStatusSuccess
+		var channelResults []*dtos.MessageResultResponse
 
-		// Check if any of the results indicate failure
-		for _, r := range result.Result {
-			if r.StatusCode >= 400 {
-				status = message.MessageStatusFailed
-				errorMessages = append(errorMessages, fmt.Sprintf("Channel %s: %s", result.GroupID, r.Message))
+		// Create results for each recipient based on legacy response
+		for i, r := range result.Result {
+			var recipient string
+			if i < len(req.Recipients) {
+				recipient = req.Recipients[i]
+			} else {
+				recipient = "unknown"
 			}
+
+			resultResponse := &dtos.MessageResultResponse{
+				Recipient: recipient,
+				Status:    message.MessageResultStatusSuccess,
+			}
+
+			if r.StatusCode >= 400 {
+				channelStatus = message.MessageStatusFailed
+				resultResponse.Status = message.MessageResultStatusFailed
+				resultResponse.Error = r.Message
+			} else {
+				resultResponse.SentAt = &currentTime
+			}
+
+			channelResults = append(channelResults, resultResponse)
 		}
+
+		messageResponse := &dtos.MessageResponse{
+			ID:         uuid.New().String(),
+			ChannelID:  result.GroupID,
+			TemplateID: req.TemplateID,
+			Recipients: req.Recipients,
+			Variables:  req.Variables,
+			Status:     channelStatus,
+			Results:    channelResults,
+			CreatedAt:  currentTime,
+			SentAt:     currentTime,
+		}
+
+		messageResponses = append(messageResponses, messageResponse)
 	}
 
-	// If there were errors, return them
-	if status == message.MessageStatusFailed {
-		return nil, fmt.Errorf("legacy system returned errors: %v", errorMessages)
-	}
-
-	// 8. Create response with information from all processed channels
-	messageResponse := &dtos.MessageResponse{
-		ID:        uuid.New().String(), // Legacy response doesn't provide a message ID
-		ChannelID: req.ChannelIDs[0],   // Use first channel ID for backward compatibility
-		Status:    status,
-		CreatedAt: time.Now().UnixMilli(),
-	}
-
-	return messageResponse, nil
+	return messageResponses, nil
 }

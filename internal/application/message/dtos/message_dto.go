@@ -44,6 +44,7 @@ type MessageResponse struct {
 	Results          []*MessageResultResponse  `json:"results,omitempty"`
 	Settings         *shared.CommonSettings    `json:"settings,omitempty"`
 	CreatedAt        int64                     `json:"createdAt"`
+	SentAt           int64
 }
 
 // MessageResultResponse represents the response for a message result.
