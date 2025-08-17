@@ -24,6 +24,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server
 # --- Final Stage ---
 FROM alpine:latest
 
+# Install wget for healthcheck
+RUN apk add --no-cache wget ca-certificates
+
 # Set the working directory inside the container
 WORKDIR /app
 
@@ -33,12 +36,22 @@ COPY --from=builder /app/server .
 # Copy the migrations directory
 COPY migrations ./migrations
 
-# Copy the .env file
-# Note: For production, it's better to manage secrets using Docker secrets or other secret management tools.
-COPY .env.example ./.env
+# Create a non-root user
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Change ownership of the app directory
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose the application port
 EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Set the command to run the application
 CMD ["./server"]

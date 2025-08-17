@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  notification-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notification-api
+    ports:
+      - "8080:8080"
+    environment:
+      # Server Configuration
+      - SERVER_PORT=8080
+      - SERVER_HOST=0.0.0.0
+      - SERVER_READ_TIMEOUT=30
+      - SERVER_WRITE_TIMEOUT=30
+      
+      # Database Configuration - 使用宿主機的 PostgreSQL
+      - DB_TYPE=postgres
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=notification_api
+      - DB_SSL_MODE=disable
+      - DB_MAX_OPEN_CONNS=25
+      - DB_MAX_IDLE_CONNS=5
+      - DB_MAX_LIFETIME=5
+      
+      # NATS Configuration - 使用宿主機的 NATS
+      - NATS_URL=nats://host.docker.internal:4222
+      - NATS_MAX_RECONNECTS=10
+      - NATS_RECONNECT_WAIT=2
+      - NATS_REQUEST_TIMEOUT=30
+      - NATS_SUBJECT_PREFIX=eco1j.infra.eventcenter
+      
+      # Logger Configuration
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - LOG_OUTPUT_PATH=stdout
+    
+    # 使用 host 網路模式以便訪問宿主機服務
+    network_mode: host
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

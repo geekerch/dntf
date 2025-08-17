@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  notification-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notification-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./.env
+    volumes:
+      # 外部掛載 NATS credentials 文件
+      - ./cmd/server/edgesync_shadowagent.creds:/app/creds/edgesync_shadowagent.creds:ro
+    environment:
+      # 覆蓋 .env 中的 NATS credentials 路徑
+      - NATS_CREDS_PATH=/app/creds/edgesync_shadowagent.creds
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # 如果需要訪問宿主機服務，可以使用以下配置
+    # network_mode: host
+    
+    # 或者使用 extra_hosts 來訪問宿主機服務
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
