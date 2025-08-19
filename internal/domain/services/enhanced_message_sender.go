@@ -153,7 +153,7 @@ func (s *EnhancedMessageSender) processSingleChannelEnhanced(
 
 	channelLogger = channelLogger.WithFields(
 		zap.String("channel_name", ch.Name().String()),
-		zap.String("channel_type", string(ch.ChannelType())))
+		zap.String("channel_type", ch.ChannelType().String()))
 
 	// Check if channel can send messages
 	if err := ch.CanSendMessage(); err != nil {
@@ -179,8 +179,8 @@ func (s *EnhancedMessageSender) processSingleChannelEnhanced(
 		// Check template compatibility
 		if !tmpl.MatchesType(ch.ChannelType()) {
 			channelLogger.Error("Template type mismatch",
-				zap.String("template_type", string(tmpl.ChannelType())),
-				zap.String("channel_type", string(ch.ChannelType())))
+				zap.String("template_type", tmpl.ChannelType().String()),
+				zap.String("channel_type", ch.ChannelType().String()))
 			return s.createFailedResult(channelID, "Template type mismatch", "TYPE_MISMATCH", 
 				fmt.Sprintf("Template type: %s, Channel type: %s", tmpl.ChannelType(), ch.ChannelType()))
 		}

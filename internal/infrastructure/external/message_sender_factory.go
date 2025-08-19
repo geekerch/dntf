@@ -22,7 +22,22 @@ func NewDefaultMessageSenderFactory(timeout time.Duration) *DefaultMessageSender
 		senders: make(map[string]MessageSender),
 	}
 
-	// Register default senders
+	// Register default senders (keep existing behavior for now)
+	factory.RegisterSender(NewEmailService(timeout))
+	factory.RegisterSender(NewSlackService(timeout))
+	factory.RegisterSender(NewSMSService(timeout))
+
+	return factory
+}
+
+// NewExtensibleMessageSenderFactory creates a factory that uses the channel type registry
+func NewExtensibleMessageSenderFactory(timeout time.Duration, registry interface{}) *DefaultMessageSenderFactory {
+	factory := &DefaultMessageSenderFactory{
+		senders: make(map[string]MessageSender),
+	}
+
+	// This will be used by the main application to create a factory with registry support
+	// For now, fallback to default behavior
 	factory.RegisterSender(NewEmailService(timeout))
 	factory.RegisterSender(NewSlackService(timeout))
 	factory.RegisterSender(NewSMSService(timeout))
@@ -100,13 +115,13 @@ func (s *DefaultNotificationService) SendSingleNotification(ctx context.Context,
 			Error:   err,
 			Details: map[string]interface{}{
 				"channel_id":   request.Channel.ID().String(),
-				"channel_type": string(request.Channel.ChannelType()),
+				"channel_type": request.Channel.ChannelType().String(),
 			},
 		}
 	}
 
 	// Get sender for channel type
-	sender, err := s.factory.CreateSender(string(request.Channel.ChannelType()))
+	sender, err := s.factory.CreateSender(request.Channel.ChannelType().String())
 	if err != nil {
 		return &SendResult{
 			Success: false,
@@ -114,7 +129,7 @@ func (s *DefaultNotificationService) SendSingleNotification(ctx context.Context,
 			Error:   err,
 			Details: map[string]interface{}{
 				"channel_id":   request.Channel.ID().String(),
-				"channel_type": string(request.Channel.ChannelType()),
+				"channel_type": request.Channel.ChannelType().String(),
 			},
 		}
 	}
@@ -127,7 +142,7 @@ func (s *DefaultNotificationService) SendSingleNotification(ctx context.Context,
 			Error:   err,
 			Details: map[string]interface{}{
 				"channel_id":   request.Channel.ID().String(),
-				"channel_type": string(request.Channel.ChannelType()),
+				"channel_type": request.Channel.ChannelType().String(),
 			},
 		}
 	}
@@ -140,7 +155,7 @@ func (s *DefaultNotificationService) SendSingleNotification(ctx context.Context,
 			Error:   err,
 			Details: map[string]interface{}{
 				"channel_id":   request.Channel.ID().String(),
-				"channel_type": string(request.Channel.ChannelType()),
+				"channel_type": request.Channel.ChannelType().String(),
 				"duration_ms":  time.Since(startTime).Milliseconds(),
 			},
 		}
@@ -152,7 +167,7 @@ func (s *DefaultNotificationService) SendSingleNotification(ctx context.Context,
 		Error:   nil,
 		Details: map[string]interface{}{
 			"channel_id":   request.Channel.ID().String(),
-			"channel_type": string(request.Channel.ChannelType()),
+			"channel_type": request.Channel.ChannelType().String(),
 			"duration_ms":  time.Since(startTime).Milliseconds(),
 		},
 		SentAt: time.Now().UnixMilli(),
@@ -172,7 +187,7 @@ func (s *DefaultNotificationService) ValidateChannel(ch *channel.Channel) error 
 	}
 
 	// Check if channel type is supported
-	sender, err := s.factory.CreateSender(string(ch.ChannelType()))
+	sender, err := s.factory.CreateSender(ch.ChannelType().String())
 	if err != nil {
 		return fmt.Errorf("unsupported channel type: %s", ch.ChannelType())
 	}

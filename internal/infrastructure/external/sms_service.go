@@ -33,8 +33,8 @@ func NewSMSService(timeout time.Duration) *SMSService {
 // Send sends an SMS message
 func (s *SMSService) Send(ctx context.Context, ch *channel.Channel, content *services.RenderedContent) error {
 	// Validate channel type
-	if ch.ChannelType() != shared.ChannelTypeSMS {
-		return fmt.Errorf("invalid channel type for SMS service: %s", ch.ChannelType())
+	if !ch.ChannelType().Equals(shared.ChannelTypeSMS) {
+		return fmt.Errorf("invalid channel type for SMS service: %s", ch.ChannelType().String())
 	}
 
 	// Extract SMS configuration
@@ -61,7 +61,7 @@ func (s *SMSService) Send(ctx context.Context, ch *channel.Channel, content *ser
 
 // GetChannelType returns the supported channel type
 func (s *SMSService) GetChannelType() string {
-	return string(shared.ChannelTypeSMS)
+	return shared.ChannelTypeSMS.String()
 }
 
 // ValidateConfig validates SMS channel configuration

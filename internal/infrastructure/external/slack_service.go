@@ -33,8 +33,8 @@ func NewSlackService(timeout time.Duration) *SlackService {
 // Send sends a message to Slack
 func (s *SlackService) Send(ctx context.Context, ch *channel.Channel, content *services.RenderedContent) error {
 	// Validate channel type
-	if ch.ChannelType() != shared.ChannelTypeSlack {
-		return fmt.Errorf("invalid channel type for Slack service: %s", ch.ChannelType())
+	if !ch.ChannelType().Equals(shared.ChannelTypeSlack) {
+		return fmt.Errorf("invalid channel type for Slack service: %s", ch.ChannelType().String())
 	}
 
 	// Extract Slack configuration
@@ -61,7 +61,7 @@ func (s *SlackService) Send(ctx context.Context, ch *channel.Channel, content *s
 
 // GetChannelType returns the supported channel type
 func (s *SlackService) GetChannelType() string {
-	return string(shared.ChannelTypeSlack)
+	return shared.ChannelTypeSlack.String()
 }
 
 // ValidateConfig validates Slack channel configuration

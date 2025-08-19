@@ -80,7 +80,7 @@ func (r *TemplateRepositoryImpl) FindAll(ctx context.Context, filter *template.T
 
 	// Apply filters
 	if filter.HasChannelTypeFilter() {
-		query = query.Where("channel_type = ?", string(*filter.ChannelType))
+		query = query.Where("channel_type = ?", filter.ChannelType.String())
 	}
 
 	if filter.HasTagsFilter() {
@@ -200,7 +200,7 @@ func (r *TemplateRepositoryImpl) toTemplateModel(tmpl *template.Template) (*mode
 		ID:          tmpl.ID().String(),
 		Name:        tmpl.Name().String(),
 		Description: tmpl.Description().String(),
-		ChannelType: string(tmpl.ChannelType()),
+		ChannelType: tmpl.ChannelType().String(),
 		Subject:     tmpl.Subject().String(),
 		Content:     tmpl.Content().String(),
 		Tags:        pq.StringArray(tmpl.Tags().ToSlice()),
@@ -232,7 +232,10 @@ func (r *TemplateRepositoryImpl) fromTemplateModel(model *models.TemplateModel) 
 	}
 
 	// Convert channel type
-	channelType := shared.ChannelType(model.ChannelType)
+	channelType, err := shared.NewChannelTypeFromString(model.ChannelType)
+	if err != nil {
+		return nil, fmt.Errorf("invalid channel type: %s, error: %w", model.ChannelType, err)
+	}
 	if !channelType.IsValid() {
 		return nil, fmt.Errorf("invalid channel type: %s", model.ChannelType)
 	}

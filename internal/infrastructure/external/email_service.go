@@ -28,8 +28,8 @@ func NewEmailService(timeout time.Duration) *EmailService {
 // Send sends an email through SMTP
 func (s *EmailService) Send(ctx context.Context, ch *channel.Channel, content *services.RenderedContent) error {
 	// Validate channel type
-	if ch.ChannelType() != shared.ChannelTypeEmail {
-		return fmt.Errorf("invalid channel type for email service: %s", ch.ChannelType())
+	if !ch.ChannelType().Equals(shared.ChannelTypeEmail) {
+		return fmt.Errorf("invalid channel type for email service: %s", ch.ChannelType().String())
 	}
 
 	// Extract SMTP configuration
@@ -56,7 +56,7 @@ func (s *EmailService) Send(ctx context.Context, ch *channel.Channel, content *s
 
 // GetChannelType returns the supported channel type
 func (s *EmailService) GetChannelType() string {
-	return string(shared.ChannelTypeEmail)
+	return shared.ChannelTypeEmail.String()
 }
 
 // ValidateConfig validates email channel configuration
