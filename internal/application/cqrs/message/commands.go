@@ -53,8 +53,11 @@ func (c *SendMessageCommand) Validate() error {
 	
 	// Validate recipients are not empty
 	for i, recipient := range c.Request.Recipients {
-		if recipient == "" {
-			return fmt.Errorf("recipient at index %d cannot be empty", i)
+		if recipient.Name == "" {
+			return fmt.Errorf("recipient name at index %d cannot be empty", i)
+		}
+		if recipient.Type == "" {
+			return fmt.Errorf("recipient type at index %d cannot be empty", i)
 		}
 	}
 	

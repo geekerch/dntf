@@ -167,7 +167,7 @@ func (uc *SendMessageUseCase) Execute(ctx context.Context, req *dtos.SendMessage
 	}
 
 	// Convert to response
-	return dtos.ToMessageResponse(messageEntity), nil
+	return dtos.ToMessageResponseWithRecipients(messageEntity, req.Recipients), nil
 }
 
 // Forward sends a message via the legacy system.
@@ -206,7 +206,7 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		if err != nil {
 			return nil, fmt.Errorf("invalid channel ID '%s': %w", channelIDStr, err)
 		}
-		channelEntity, err := uc.channelRepo.FindByID(ctx, channelID)
+		_, err = uc.channelRepo.FindByID(ctx, channelID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find channel '%s': %w", channelIDStr, err)
 		}
@@ -215,8 +215,8 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		sendList := make([]LegacySendListItem, len(req.Recipients))
 		for i, r := range req.Recipients {
 			sendList[i] = LegacySendListItem{
-				Target:        r,
-				RecipientType: channelEntity.ChannelType().String(),
+				Target:        r.Target,
+				RecipientType: r.Type,
 			}
 		}
 
@@ -295,7 +295,7 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		for i, r := range result.Result {
 			var recipient string
 			if i < len(req.Recipients) {
-				recipient = req.Recipients[i]
+				recipient = req.Recipients[i].Target
 			} else {
 				recipient = "unknown"
 			}
