@@ -61,7 +61,7 @@ func (uc *GetChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Channe
 		ChannelName:    ch.Name().String(),
 		Description:    ch.Description().String(),
 		Enabled:        ch.IsEnabled(),
-		ChannelType:    string(ch.ChannelType()),
+		ChannelType:    ch.ChannelType().String(),
 		TemplateID:     templateID,
 		CommonSettings: dtos.FromCommonSettings(ch.CommonSettings()),
 		Config:         ch.Config().ToMap(),

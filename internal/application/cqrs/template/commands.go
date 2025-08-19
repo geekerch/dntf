@@ -38,7 +38,7 @@ func (c *CreateTemplateCommand) Validate() error {
 		return fmt.Errorf("template name is required")
 	}
 	
-	if c.Request.ChannelType == "" {
+	if c.Request.ChannelType.String() == "" {
 		return fmt.Errorf("channel type is required")
 	}
 	

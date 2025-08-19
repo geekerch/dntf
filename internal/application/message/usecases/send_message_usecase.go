@@ -216,7 +216,7 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		for i, r := range req.Recipients {
 			sendList[i] = LegacySendListItem{
 				Target:        r,
-				RecipientType: string(channelEntity.ChannelType()),
+				RecipientType: channelEntity.ChannelType().String(),
 			}
 		}
 

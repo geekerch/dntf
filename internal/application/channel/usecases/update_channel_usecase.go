@@ -130,9 +130,9 @@ func (uc *UpdateChannelUseCase) convertToDomainObjects(request *dtos.UpdateChann
 	}
 
 	// Channel type
-	channelType := shared.ChannelType(request.ChannelType)
-	if !channelType.IsValid() {
-		return nil, fmt.Errorf("invalid channel type: %s", request.ChannelType)
+	channelType, err := shared.NewChannelTypeFromString(request.ChannelType)
+	if err != nil {
+		return nil, fmt.Errorf("invalid channel type: %s, error: %w", request.ChannelType, err)
 	}
 
 	// Template ID
@@ -187,7 +187,7 @@ func (uc *UpdateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Cha
 		ChannelName:    ch.Name().String(),
 		Description:    ch.Description().String(),
 		Enabled:        ch.IsEnabled(),
-		ChannelType:    string(ch.ChannelType()),
+		ChannelType:    ch.ChannelType().String(),
 		TemplateID:     templateID,
 		CommonSettings: dtos.FromCommonSettings(ch.CommonSettings()),
 		Config:         ch.Config().ToMap(),

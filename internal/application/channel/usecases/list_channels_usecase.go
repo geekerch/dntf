@@ -68,8 +68,8 @@ func (uc *ListChannelsUseCase) createFilter(request *dtos.ListChannelsRequest) *
 
 	// Channel type filter
 	if request.ChannelType != "" {
-		channelType := shared.ChannelType(request.ChannelType)
-		if channelType.IsValid() {
+		channelType, err := shared.NewChannelTypeFromString(request.ChannelType)
+		if err == nil && channelType.IsValid() {
 			filter.WithChannelType(channelType)
 		}
 	}
@@ -90,7 +90,7 @@ func (uc *ListChannelsUseCase) convertToResponse(result *shared.PaginatedResult[
 		items = append(items, dtos.ChannelSummaryResponse{
 			ChannelID:   ch.ID().String(),
 			ChannelName: ch.Name().String(),
-			ChannelType: string(ch.ChannelType()),
+			ChannelType: ch.ChannelType().String(),
 			Tags:        ch.Tags().ToSlice(),
 			Enabled:     ch.IsEnabled(),
 			CreatedAt:   ch.Timestamps().CreatedAt,
