@@ -33,17 +33,18 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	Type         string `json:"type"` // postgres, sqlite, sqlserver
-	Host         string `json:"host"`
-	Port         int    `json:"port"`
-	User         string `json:"user"`
-	Password     string `json:"password"`
-	DBName       string `json:"dbName"`
-	Schema       string `json:"schema"`
-	SSLMode      string `json:"sslMode"`
-	MaxOpenConns int    `json:"maxOpenConns"`
-	MaxIdleConns int    `json:"maxIdleConns"`
-	MaxLifetime  int    `json:"maxLifetime"` // in minutes
+	Type           string `json:"type"` // postgres, sqlite, sqlserver
+	Host           string `json:"host"`
+	Port           int    `json:"port"`
+	User           string `json:"user"`
+	Password       string `json:"password"`
+	DBName         string `json:"dbName"`
+	Schema         string `json:"schema"`
+	SSLMode        string `json:"sslMode"`
+	MaxOpenConns   int    `json:"maxOpenConns"`
+	MaxIdleConns   int    `json:"maxIdleConns"`
+	MaxLifetime    int    `json:"maxLifetime"` // in minutes
+	MigrationsPath string `json:"migrationsPath"`
 }
 
 // NATSConfig holds NATS configuration
@@ -76,17 +77,18 @@ func Load() (*Config, error) {
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 30),
 		},
 		Database: DatabaseConfig{
-			Type:         getEnv("DB_TYPE", "postgres"),
-			Host:         getEnv("DB_HOST", "localhost"),
-			Port:         getEnvAsInt("DB_PORT", 5432),
-			User:         getEnv("DB_USER", "postgres"),
-			Password:     getEnv("DB_PASSWORD", ""),
-			DBName:       getEnv("DB_NAME", "channel_api"),
-			Schema:       getEnv("DB_SCHEMA", "public"),
-			SSLMode:      getEnv("DB_SSL_MODE", "disable"),
-			MaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
-			MaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
-			MaxLifetime:  getEnvAsInt("DB_MAX_LIFETIME", 5),
+			Type:           getEnv("DB_TYPE", "postgres"),
+			Host:           getEnv("DB_HOST", "localhost"),
+			Port:           getEnvAsInt("DB_PORT", 5432),
+			User:           getEnv("DB_USER", "postgres"),
+			Password:       getEnv("DB_PASSWORD", ""),
+			DBName:         getEnv("DB_NAME", "channel_api"),
+			Schema:         getEnv("DB_SCHEMA", "public"),
+			SSLMode:        getEnv("DB_SSL_MODE", "disable"),
+			MaxOpenConns:   getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+			MaxIdleConns:   getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+			MaxLifetime:    getEnvAsInt("DB_MAX_LIFETIME", 5),
+			MigrationsPath: getEnv("DB_MIGRATIONS_PATH", "migrations"),
 		},
 		NATS: NATSConfig{
 			URL:            getEnv("NATS_URL", "nats://localhost:4222"),

@@ -147,7 +147,9 @@ func (db *GormDB) runFileBasedMigrations() error {
 		return err
 	}
 
-	m, err := migrate.New("file://migrations", databaseURL)
+	// Use migrations path from configuration
+	migrationsURL := fmt.Sprintf("file://%s", db.config.MigrationsPath)
+	m, err := migrate.New(migrationsURL, databaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
