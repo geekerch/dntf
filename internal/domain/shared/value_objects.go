@@ -2,26 +2,68 @@ package shared
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
 // ChannelType represents the type of communication channel
-type ChannelType string
+type ChannelType struct {
+	name string
+}
 
-const (
-	ChannelTypeEmail ChannelType = "email"
-	ChannelTypeSlack ChannelType = "slack"
-	ChannelTypeSMS   ChannelType = "sms"
+// Predefined channel types for backward compatibility
+var (
+	ChannelTypeEmail = MustNewChannelType("email")
+	ChannelTypeSlack = MustNewChannelType("slack")
+	ChannelTypeSMS   = MustNewChannelType("sms")
 )
+
+// NewChannelType creates a new channel type
+func NewChannelType(name string) (ChannelType, error) {
+	if name == "" {
+		return ChannelType{}, errors.New("channel type name cannot be empty")
+	}
+	
+	// Check if the channel type is registered
+	if !GetChannelTypeRegistry().IsValidChannelType(name) {
+		return ChannelType{}, fmt.Errorf("invalid channel type: %s", name)
+	}
+	
+	return ChannelType{name: name}, nil
+}
+
+// MustNewChannelType creates a new channel type and panics if invalid
+func MustNewChannelType(name string) ChannelType {
+	ct, err := NewChannelType(name)
+	if err != nil {
+		// For predefined types, we allow creation even if not registered yet
+		// This is to avoid circular dependency during initialization
+		return ChannelType{name: name}
+	}
+	return ct
+}
+
+// NewChannelTypeFromString creates a channel type from string (for backward compatibility)
+func NewChannelTypeFromString(name string) (ChannelType, error) {
+	return NewChannelType(name)
+}
+
+// String returns the string representation of the channel type
+func (ct ChannelType) String() string {
+	return ct.name
+}
 
 // IsValid validates if the channel type is valid
 func (ct ChannelType) IsValid() bool {
-	switch ct {
-	case ChannelTypeEmail, ChannelTypeSlack, ChannelTypeSMS:
-		return true
-	default:
+	if ct.name == "" {
 		return false
 	}
+	return GetChannelTypeRegistry().IsValidChannelType(ct.name)
+}
+
+// Equals compares two channel types for equality
+func (ct ChannelType) Equals(other ChannelType) bool {
+	return ct.name == other.name
 }
 
 // Pagination represents pagination parameters
@@ -117,4 +159,31 @@ func (t *Timestamps) MarkDeleted() {
 // IsDeleted checks if the entity is deleted
 func (t *Timestamps) IsDeleted() bool {
 	return t.DeletedAt != nil
+}
+
+// MarshalJSON implements json.Marshaler interface for ChannelType
+func (ct ChannelType) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + ct.name + `"`), nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface for ChannelType
+func (ct *ChannelType) UnmarshalJSON(data []byte) error {
+	// Remove quotes from JSON string
+	if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+		return fmt.Errorf("invalid JSON string for ChannelType: %s", string(data))
+	}
+	
+	name := string(data[1 : len(data)-1])
+	if name == "" {
+		return errors.New("channel type name cannot be empty")
+	}
+	
+	// Create channel type (this will validate against registry)
+	channelType, err := NewChannelType(name)
+	if err != nil {
+		return err
+	}
+	
+	*ct = channelType
+	return nil
 }

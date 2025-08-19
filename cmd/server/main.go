@@ -33,6 +33,7 @@ import (
 	templatecqrs "notification/internal/application/cqrs/template"
 	messagecqrs "notification/internal/application/cqrs/message"
 	"notification/internal/domain/services"
+	"notification/internal/domain/shared"
 	"notification/internal/infrastructure/external"
 	"notification/internal/infrastructure/messaging"
 	"notification/internal/infrastructure/repository"
@@ -66,6 +67,10 @@ func main() {
 	log.Info("Starting Notification server",
 		zap.String("version", "1.0.0"),
 		zap.String("server_address", cfg.GetServerAddress()))
+
+	// Initialize channel types registry
+	shared.MustInitializeChannelTypes()
+	log.Info("Channel types initialized successfully")
 
 	// Initialize database
 	db, err := database.NewGormDB(&cfg.Database)
