@@ -4,40 +4,6 @@
 4. 有更好的建議和作法可以告訴我
 
 本次要做的事
-internal/application/channel/usecases下
-create_channel_usecase下已經有轉發到legacy的系統。
-幫我在update與delete也做同樣的處理
-upadte legacy的end point是
-put /v2.0/Groups/{groupId}
-body是
-{
-  "name": "emailGroupTest",
-  "description": "email group",
-  "type": "email",
-  "levelName": "Critical",
-  "config": {
-    "host": "mailapp.advantech.com.tw",
-    "port": 465,
-    "secure": true,
-    "method": "ssl",
-    "username": "TEST_USER",
-    "password": "TEST_PWD",
-    "senderEmail": "test@advantech.com.tw",
-    "emailSubject": "Test Subject",
-    "template": "Hi, Have a good day!"
-  },
-  "sendList": [{
-    "firstName": "Firstname",
-    "lastName": "Lastname",
-    "recipientType": "to",
-    "target": "test@advantech.com.tw"
-  }]
-}
+presentation中有nats與http的實做。請以nats的結構為主，去更新http的dto格式。nats中的data，就是http的request。請更新http的，並且連swagger的註解也要更新，並重新產生swagger
 
-delete的是
-delete /v2.0/Groups
 
-body是
-[
-  "string"
-]

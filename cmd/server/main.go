@@ -278,8 +278,8 @@ func buildContainer(db *database.GormDB, natsClient *messaging.NATSClient, log *
 	createTemplateUseCase := templateusecases.NewCreateTemplateUseCase(templateRepo)
 	getTemplateUseCase := templateusecases.NewGetTemplateUseCase(templateRepo)
 	listTemplatesUseCase := templateusecases.NewListTemplatesUseCase(templateRepo)
-	updateTemplateUseCase := templateusecases.NewUpdateTemplateUseCase(templateRepo)
-	deleteTemplateUseCase := templateusecases.NewDeleteTemplateUseCase(templateRepo)
+	updateTemplateUseCase := templateusecases.NewUpdateTemplateUseCase(templateRepo, channelRepo, cfg)
+	deleteTemplateUseCase := templateusecases.NewDeleteTemplateUseCase(templateRepo, channelRepo, cfg)
 
 	// Initialize message use cases
 	sendMessageUseCase := messageusecases.NewSendMessageUseCase(messageRepo, channelRepo, templateRepo, messageSender, cfg)
