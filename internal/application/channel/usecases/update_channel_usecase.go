@@ -1,30 +1,42 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 
 	"notification/internal/application/channel/dtos"
 	"notification/internal/domain/channel"
 	"notification/internal/domain/services"
 	"notification/internal/domain/shared"
 	"notification/internal/domain/template"
+	"notification/pkg/config"
 )
 
 // UpdateChannelUseCase is the use case for updating a channel.
 type UpdateChannelUseCase struct {
-	channelRepo channel.ChannelRepository
-	validator   *services.ChannelValidator
+	channelRepo  channel.ChannelRepository
+	templateRepo template.TemplateRepository
+	validator    *services.ChannelValidator
+	config       *config.Config
 }
 
 // NewUpdateChannelUseCase creates a use case instance.
 func NewUpdateChannelUseCase(
 	channelRepo channel.ChannelRepository,
+	templateRepo template.TemplateRepository,
 	validator *services.ChannelValidator,
+	config *config.Config,
 ) *UpdateChannelUseCase {
 	return &UpdateChannelUseCase{
-		channelRepo: channelRepo,
-		validator:   validator,
+		channelRepo:  channelRepo,
+		templateRepo: templateRepo,
+		validator:    validator,
+		config:       config,
 	}
 }
 
@@ -69,7 +81,12 @@ func (uc *UpdateChannelUseCase) Execute(ctx context.Context, channelID string, r
 		return nil, fmt.Errorf("cannot update deleted channel")
 	}
 
-	// 6. Update the channel
+	// 6. Forward to legacy system
+	if err := uc.forwardUpdateToLegacySystem(ctx, ch.ID().String(), domainObjects, request); err != nil {
+		return nil, fmt.Errorf("failed to forward update to legacy system: %w", err)
+	}
+
+	// 7. Update the channel
 	if err := ch.Update(
 		domainObjects.Name,
 		domainObjects.Description,
@@ -84,12 +101,12 @@ func (uc *UpdateChannelUseCase) Execute(ctx context.Context, channelID string, r
 		return nil, fmt.Errorf("failed to update channel: %w", err)
 	}
 
-	// 7. Persist
+	// 8. Persist
 	if err := uc.channelRepo.Update(ctx, ch); err != nil {
 		return nil, fmt.Errorf("failed to save channel: %w", err)
 	}
 
-	// 8. Convert to response DTO
+	// 9. Convert to response DTO
 	response := uc.convertToResponse(ch)
 	return response, nil
 }
@@ -197,4 +214,118 @@ func (uc *UpdateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Cha
 		UpdatedAt:      ch.Timestamps().UpdatedAt,
 		LastUsed:       ch.LastUsed(),
 	}
+}
+
+// forwardUpdateToLegacySystem forwards the update request to the legacy system
+func (uc *UpdateChannelUseCase) forwardUpdateToLegacySystem(ctx context.Context, groupID string, domainObjects *DomainObjects, request *dtos.UpdateChannelRequest) error {
+	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups/" + groupID
+	bearerToken := uc.config.LegacySystem.Token
+
+	// 1. Construct the request body for the legacy system
+	legacyReq := LegacyChannelRequest{
+		Name:        domainObjects.Name.String(),
+		Description: domainObjects.Description.String(),
+		Type:        domainObjects.ChannelType.String(),
+		LevelName:   "Critical", // Assuming this is a default or derived value
+		Config:      LegacyConfig{},
+		SendList:    []SendListItem{},
+	}
+
+	// 1a. Fetch template if TemplateID exists
+	var foundTemplate *template.Template
+	if domainObjects.TemplateID != nil {
+		var err error
+		foundTemplate, err = uc.templateRepo.FindByID(ctx, domainObjects.TemplateID)
+		if err != nil {
+			// Decide if a missing template is a fatal error. For now, let's assume it is.
+			return fmt.Errorf("failed to find template with ID %s: %w", domainObjects.TemplateID.String(), err)
+		}
+	}
+
+	// 2. Populate Config from ch.Config() and template
+	configMap := domainObjects.Config.ToMap()
+	if host, ok := configMap["host"].(string); ok {
+		legacyReq.Config.Host = host
+	}
+	if port, ok := configMap["port"].(float64); ok { // JSON numbers are float64
+		legacyReq.Config.Port = int(port)
+	}
+	if secure, ok := configMap["secure"].(bool); ok {
+		legacyReq.Config.Secure = secure
+	}
+	if method, ok := configMap["method"].(string); ok {
+		legacyReq.Config.Method = method
+	}
+	if username, ok := configMap["username"].(string); ok {
+		legacyReq.Config.Username = username
+	}
+	if password, ok := configMap["password"].(string); ok {
+		legacyReq.Config.Password = password
+	}
+	if senderEmail, ok := configMap["senderEmail"].(string); ok {
+		legacyReq.Config.SenderEmail = senderEmail
+	}
+
+	// Prioritize template values for subject and content
+	if foundTemplate != nil {
+		legacyReq.Config.EmailSubject = foundTemplate.Subject().String()
+		legacyReq.Config.Template = foundTemplate.Content().String()
+	} else {
+		// Fallback to configMap if no template
+		if emailSubject, ok := configMap["emailSubject"].(string); ok {
+			legacyReq.Config.EmailSubject = emailSubject
+		} else {
+			legacyReq.Config.EmailSubject = "Test subject"
+		}
+		if template, ok := configMap["template"].(string); ok {
+			legacyReq.Config.Template = template
+		}
+	}
+
+	// 3. Populate SendList from ch.Recipients()
+	recipientDTOs := request.Recipients
+	for _, r := range recipientDTOs {
+		firstName := r.Name
+		lastName := ""
+		if parts := strings.SplitN(r.Name, " ", 2); len(parts) > 1 {
+			firstName = parts[0]
+			lastName = parts[1]
+		}
+
+		legacyReq.SendList = append(legacyReq.SendList, SendListItem{
+			FirstName:     firstName,
+			LastName:      lastName,
+			RecipientType: r.Type,
+			Target:        r.Target,
+		})
+	}
+
+	// 4. Marshal the request body to JSON
+	reqBody, err := json.Marshal(legacyReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal legacy request body: %w", err)
+	}
+
+	// 5. Create and send the HTTP PUT request
+	req, err := http.NewRequestWithContext(ctx, "PUT", legacyURL, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return fmt.Errorf("failed to create legacy http request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+bearerToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request to legacy system: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 6. Check response status
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("legacy system returned error status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }

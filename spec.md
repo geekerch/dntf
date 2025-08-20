@@ -4,4 +4,40 @@
 4. 有更好的建議和作法可以告訴我
 
 本次要做的事
-現在的db migrations的路徑是寫在main中的，但開發時的路徑與docker時的不同。把他設定環境變數可以用配置的
+internal/application/channel/usecases下
+create_channel_usecase下已經有轉發到legacy的系統。
+幫我在update與delete也做同樣的處理
+upadte legacy的end point是
+put /v2.0/Groups/{groupId}
+body是
+{
+  "name": "emailGroupTest",
+  "description": "email group",
+  "type": "email",
+  "levelName": "Critical",
+  "config": {
+    "host": "mailapp.advantech.com.tw",
+    "port": 465,
+    "secure": true,
+    "method": "ssl",
+    "username": "TEST_USER",
+    "password": "TEST_PWD",
+    "senderEmail": "test@advantech.com.tw",
+    "emailSubject": "Test Subject",
+    "template": "Hi, Have a good day!"
+  },
+  "sendList": [{
+    "firstName": "Firstname",
+    "lastName": "Lastname",
+    "recipientType": "to",
+    "target": "test@advantech.com.tw"
+  }]
+}
+
+delete的是
+delete /v2.0/Groups
+
+body是
+[
+  "string"
+]

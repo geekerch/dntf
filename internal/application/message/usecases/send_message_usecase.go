@@ -214,9 +214,13 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		// Construct the request body for the legacy system
 		sendList := make([]LegacySendListItem, len(req.Recipients))
 		for i, r := range req.Recipients {
+			// Extract target and type from the map
+			target, _ := r["target"].(string)
+			recipientType, _ := r["type"].(string)
+			
 			sendList[i] = LegacySendListItem{
-				Target:        r.Target,
-				RecipientType: r.Type,
+				Target:        target,
+				RecipientType: recipientType,
 			}
 		}
 
@@ -295,7 +299,11 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		for i, r := range result.Result {
 			var recipient string
 			if i < len(req.Recipients) {
-				recipient = req.Recipients[i].Target
+				if target, ok := req.Recipients[i]["target"].(string); ok {
+					recipient = target
+				} else {
+					recipient = "unknown"
+				}
 			} else {
 				recipient = "unknown"
 			}

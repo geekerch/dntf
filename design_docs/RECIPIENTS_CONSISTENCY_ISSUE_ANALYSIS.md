@@ -144,57 +144,86 @@ type SendMessageRequest struct {
 
 1. **SendMessageRequest**：
    ```go
-   Recipients []channeldtos.RecipientDTO `json:"recipients" validate:"required,min=1"`
+   Recipients []map[string]interface{} `json:"recipients" validate:"required,min=1"`
    ```
 
 2. **MessageResponse**：
    ```go
-   Recipients []channeldtos.RecipientDTO `json:"recipients"`
+   Recipients []map[string]interface{} `json:"recipients"`
    ```
 
 3. **Use Case 修改**：
-   - 更新 `send_message_usecase.go` 處理新的 recipients 格式
-   - 修改 legacy system 整合邏輯
+   - 更新 `send_message_usecase.go` 處理靈活的 recipients 格式
+   - 修改 legacy system 整合邏輯，從 map 中提取 target 和 type
    - 新增 `ToMessageResponseWithRecipients` 函數
 
 4. **CQRS 驗證**：
-   - 更新 command 驗證邏輯，檢查 `Name` 和 `Type` 欄位
+   - 更新 command 驗證邏輯，檢查 map 是否為空
 
 ### Recipients 格式範例
 
-現在所有 API 都使用統一的結構化格式：
+現在所有 API 都使用靈活的 map 格式，由各 channel 類型自行定義：
 
+#### Email Channel
 ```json
 {
   "recipients": [
     {
       "name": "John Doe",
-      "target": "john@example.com",
+      "email": "john@example.com",
       "type": "to"
     },
     {
-      "name": "Jane Smith", 
-      "target": "#general",
-      "type": "channel"
-    },
-    {
-      "name": "Support Team",
-      "target": "+1234567890", 
-      "type": "phone"
+      "name": "Jane Smith",
+      "email": "jane@example.com", 
+      "type": "cc"
     }
   ]
 }
 ```
 
-### 不同 Channel 類型的 Recipients
+#### Slack Channel
+```json
+{
+  "recipients": [
+    {
+      "name": "General Channel",
+      "channel": "#general",
+      "type": "channel"
+    },
+    {
+      "name": "John Doe",
+      "user": "@john.doe",
+      "type": "user"
+    }
+  ]
+}
+```
 
-- **Email**: `type="to/cc/bcc"`, `target="email@example.com"`
-- **Slack**: `type="channel/user"`, `target="#general"` 或 `"@username"`
-- **SMS**: `type="phone"`, `target="+1234567890"`
+#### SMS Channel
+```json
+{
+  "recipients": [
+    {
+      "name": "John Doe",
+      "phone": "+1234567890",
+      "type": "mobile"
+    }
+  ]
+}
+```
+
+### 設計優勢
+
+- **完全靈活**：每個 channel 類型可以定義自己的 recipients 格式
+- **易於擴展**：新增 channel 類型時不需要修改核心 DTO 結構
+- **向後相容**：現有 channel 類型可以保持原有格式
+- **自主解讀**：各 channel 的 service 層自行解析所需欄位
 
 ## 結論
 
-✅ **統一化完成**：所有 API 現在使用一致的結構化 recipients 格式
-✅ **靈活支援**：根據不同 channel 類型使用不同的 `type` 和 `target` 值
+✅ **統一化完成**：所有 API 現在使用一致的 `map[string]interface{}` recipients 格式
+✅ **完全靈活**：每個 channel 類型可以自行定義和解讀 recipients 結構
+✅ **易於擴展**：新增 channel 類型時無需修改核心 API 結構
+✅ **自主管理**：各 channel service 自行處理所需的 recipient 欄位
 ✅ **向後相容**：由於尚未上線，直接修改不影響現有用戶
-✅ **擴展性**：未來可以輕鬆加入新的 recipient 欄位或 channel 類型

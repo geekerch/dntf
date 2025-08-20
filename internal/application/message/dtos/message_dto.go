@@ -1,7 +1,6 @@
 package dtos
 
 import (
-	channeldtos "notification/internal/application/channel/dtos"
 	"notification/internal/domain/message"
 	"notification/internal/domain/shared"
 )
@@ -10,7 +9,7 @@ import (
 type SendMessageRequest struct {
 	ChannelIDs       []string                  `json:"channelIds" validate:"required,min=1"`
 	TemplateID       string                    `json:"templateId" validate:"required"`
-	Recipients       []channeldtos.RecipientDTO `json:"recipients" validate:"required,min=1"`
+	Recipients       []map[string]interface{}  `json:"recipients" validate:"required,min=1"`
 	Variables        map[string]interface{}    `json:"variables,omitempty"`
 	ChannelOverrides *message.ChannelOverrides `json:"channelOverrides,omitempty"`
 	Settings         *shared.CommonSettings    `json:"settings,omitempty"`
@@ -38,7 +37,7 @@ type MessageResponse struct {
 	ID               string                    `json:"id"`
 	ChannelID        string                    `json:"channelId"`
 	TemplateID       string                    `json:"templateId"`
-	Recipients       []channeldtos.RecipientDTO `json:"recipients"`
+	Recipients       []map[string]interface{}  `json:"recipients"`
 	Variables        map[string]interface{}    `json:"variables,omitempty"`
 	ChannelOverrides *message.ChannelOverrides `json:"channelOverrides,omitempty"`
 	Status           message.MessageStatus     `json:"status"`
@@ -68,7 +67,7 @@ func ToMessageResponse(m *message.Message) *MessageResponse {
 		ID:         m.ID().String(),
 		Status:     m.Status(),
 		CreatedAt:  m.CreatedAt(),
-		Recipients: []channeldtos.RecipientDTO{}, // Initialize empty recipients
+		Recipients: []map[string]interface{}{}, // Initialize empty recipients
 	}
 
 	// Get the first channel ID if available
@@ -109,7 +108,7 @@ func ToMessageResponse(m *message.Message) *MessageResponse {
 }
 
 // ToMessageResponseWithRecipients converts a message entity to a response DTO with recipients.
-func ToMessageResponseWithRecipients(m *message.Message, recipients []channeldtos.RecipientDTO) *MessageResponse {
+func ToMessageResponseWithRecipients(m *message.Message, recipients []map[string]interface{}) *MessageResponse {
 	response := ToMessageResponse(m)
 	if response != nil {
 		response.Recipients = recipients
