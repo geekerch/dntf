@@ -172,7 +172,7 @@ func (uc *SendMessageUseCase) Execute(ctx context.Context, req *dtos.SendMessage
 
 // Forward sends a message via the legacy system.
 func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessageRequest) ([]*dtos.MessageResponse, error) {
-	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups/send" // This might need adjustment
+	legacyURL := uc.config.LegacySystem.URL + "/Groups/send" // This might need adjustment
 	bearerToken := uc.config.LegacySystem.Token
 
 	// Validate request
@@ -197,10 +197,16 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 		}
 	}
 
-	// 2. Create legacy requests for each channel
+	// 2. Create legacy requests for each channel (deduplicate channel IDs)
 	var legacyRequests []LegacyMessageRequest
+	processedChannels := make(map[string]bool)
 
 	for _, channelIDStr := range req.ChannelIDs {
+		// Skip if this channel has already been processed
+		if processedChannels[channelIDStr] {
+			continue
+		}
+		processedChannels[channelIDStr] = true
 		// Get Channel info
 		channelID, err := channel.NewChannelIDFromString(channelIDStr)
 		if err != nil {
@@ -217,7 +223,7 @@ func (uc *SendMessageUseCase) Forward(ctx context.Context, req *dtos.SendMessage
 			// Extract target and type from the map
 			target, _ := r["target"].(string)
 			recipientType, _ := r["type"].(string)
-			
+
 			sendList[i] = LegacySendListItem{
 				Target:        target,
 				RecipientType: recipientType,
