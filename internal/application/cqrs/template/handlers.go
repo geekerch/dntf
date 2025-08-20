@@ -132,8 +132,8 @@ func (h *TemplateQueryHandlers) HandleListTemplates(ctx context.Context, query *
 	if query.Options != nil && query.Options.Pagination != nil {
 		// Convert offset/limit to page/size
 		page := (query.Options.Pagination.Offset / query.Options.Pagination.Limit) + 1
-		request.Page = page
-		request.Size = query.Options.Pagination.Limit
+		request.SkipCount = page
+		request.MaxResultCount = query.Options.Pagination.Limit
 	}
 
 	response, err := h.listTemplatesUC.Execute(ctx, request)

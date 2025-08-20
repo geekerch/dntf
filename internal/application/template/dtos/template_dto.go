@@ -45,10 +45,10 @@ type TemplateResponse struct {
 
 // ListTemplatesRequest represents the request to list templates.
 type ListTemplatesRequest struct {
-	ChannelType *shared.ChannelType `json:"channelType,omitempty"`
-	Tags        []string            `json:"tags,omitempty"`
-	Page        int                 `json:"page,omitempty" validate:"omitempty,min=1"`
-	Size        int                 `json:"size,omitempty" validate:"omitempty,min=1,max=100"`
+	ChannelType    *shared.ChannelType `json:"channelType,omitempty"`
+	Tags           []string            `json:"tags,omitempty"`
+	SkipCount      int                 `json:"skipCount,omitempty" validate:"omitempty,min=0"`
+	MaxResultCount int                 `json:"maxResultCount,omitempty" validate:"omitempty,min=1,max=100"`
 }
 
 // ListTemplatesResponse represents the response for listing templates.
@@ -115,21 +115,18 @@ func (req *ListTemplatesRequest) ToTemplateFilter() *template.TemplateFilter {
 
 // ToPagination converts a list request to pagination.
 func (req *ListTemplatesRequest) ToPagination() *shared.Pagination {
-	page := 1
-	size := 20
+	skipCount := req.SkipCount
+	maxResultCount := req.MaxResultCount
 	
-	if req.Page > 0 {
-		page = req.Page
+	// Set defaults if not provided
+	if maxResultCount <= 0 {
+		maxResultCount = 20
+	}
+	if skipCount < 0 {
+		skipCount = 0
 	}
 	
-	if req.Size > 0 {
-		size = req.Size
-	}
-	
-	// Calculate skip count from page and size
-	skipCount := (page - 1) * size
-	
-	pagination, err := shared.NewPagination(skipCount, size)
+	pagination, err := shared.NewPagination(skipCount, maxResultCount)
 	if err != nil {
 		// Return default pagination if there's an error
 		return shared.DefaultPagination()

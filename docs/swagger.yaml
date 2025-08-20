@@ -47,8 +47,6 @@ definitions:
     type: object
   notification_internal_application_channel_dtos.RecipientDTO:
     properties:
-      email:
-        type: string
       name:
         type: string
       target:
@@ -103,7 +101,8 @@ definitions:
         $ref: '#/definitions/notification_internal_domain_message.ChannelOverrides'
       recipients:
         items:
-          type: string
+          additionalProperties: true
+          type: object
         minItems: 1
         type: array
       settings:
@@ -172,15 +171,7 @@ definitions:
   notification_internal_domain_message.ChannelOverrides:
     type: object
   notification_internal_domain_shared.ChannelType:
-    enum:
-    - email
-    - slack
-    - sms
-    type: string
-    x-enum-varnames:
-    - ChannelTypeEmail
-    - ChannelTypeSlack
-    - ChannelTypeSMS
+    type: object
   notification_internal_domain_shared.CommonSettings:
     properties:
       retryAttempts:
@@ -820,15 +811,15 @@ paths:
           type: string
         name: tags
         type: array
-      - default: 1
-        description: Page number
+      - default: 0
+        description: Number of records to skip for pagination
         in: query
-        name: page
+        name: skipCount
         type: integer
       - default: 20
-        description: Page size
+        description: Maximum number of records to return per page (1-100)
         in: query
-        name: size
+        name: maxResultCount
         type: integer
       produces:
       - application/json

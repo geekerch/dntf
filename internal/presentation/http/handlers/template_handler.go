@@ -8,6 +8,7 @@ import (
 
 	"notification/internal/application/template/dtos"
 	"notification/internal/application/template/usecases"
+	"notification/internal/domain/shared"
 )
 
 // TemplateHandler handles HTTP requests for templates.
@@ -52,9 +53,11 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	var req dtos.CreateTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request body",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "INVALID_REQUEST",
+				"message": "Invalid request body: " + err.Error(),
+			},
 		})
 		return
 	}
@@ -62,17 +65,18 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	response, err := h.createTemplateUC.Execute(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Failed to create template",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "CREATE_TEMPLATE_FAILED",
+				"message": "Failed to create template: " + err.Error(),
+			},
 		})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    response,
-		"message": "Template created successfully",
+		"data":  response,
+		"error": nil,
 	})
 }
 
@@ -94,16 +98,18 @@ func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 	response, err := h.getTemplateUC.Execute(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Template not found",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "TEMPLATE_NOT_FOUND",
+				"message": "Template not found: " + err.Error(),
+			},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
+		"data":  response,
+		"error": nil,
 	})
 }
 
@@ -115,8 +121,8 @@ func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 // @Produce json
 // @Param channelType query string false "Filter by channel type"
 // @Param tags query []string false "Filter by tags"
-// @Param page query int false "Page number" default(1)
-// @Param size query int false "Page size" default(20)
+// @Param skipCount query int false "Number of records to skip for pagination" default(0)
+// @Param maxResultCount query int false "Maximum number of records to return per page (1-100)" default(20)
 // @Success 200 {object} map[string]interface{} "Success response with templates list"
 // @Failure 400 {object} map[string]interface{} "Bad request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
@@ -127,8 +133,9 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 
 	// Parse query parameters
 	if channelType := c.Query("channelType"); channelType != "" {
-		// Note: You might want to add validation for channel type here
-		// For now, we'll assume it's valid
+		if ct, err := shared.NewChannelType(channelType); err == nil {
+			req.ChannelType = &ct
+		}
 	}
 
 	// Parse tags
@@ -137,31 +144,33 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 	}
 
 	// Parse pagination
-	if page := c.Query("page"); page != "" {
-		if p, err := strconv.Atoi(page); err == nil && p > 0 {
-			req.Page = p
+	if skipCount := c.Query("skipCount"); skipCount != "" {
+		if sc, err := strconv.Atoi(skipCount); err == nil && sc >= 0 {
+			req.SkipCount = sc
 		}
 	}
 
-	if size := c.Query("size"); size != "" {
-		if s, err := strconv.Atoi(size); err == nil && s > 0 {
-			req.Size = s
+	if maxResultCount := c.Query("maxResultCount"); maxResultCount != "" {
+		if mrc, err := strconv.Atoi(maxResultCount); err == nil && mrc > 0 {
+			req.MaxResultCount = mrc
 		}
 	}
 
 	response, err := h.listTemplatesUC.Execute(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to list templates",
-			"details": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "LIST_TEMPLATES_FAILED",
+				"message": "Failed to list templates: " + err.Error(),
+			},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
+		"data":  response,
+		"error": nil,
 	})
 }
 
@@ -185,9 +194,11 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 	var req dtos.UpdateTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request body",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "INVALID_REQUEST",
+				"message": "Invalid request body: " + err.Error(),
+			},
 		})
 		return
 	}
@@ -195,17 +206,18 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 	response, err := h.updateTemplateUC.Execute(c.Request.Context(), id, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Failed to update template",
-			"details": err.Error(),
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "UPDATE_TEMPLATE_FAILED",
+				"message": "Failed to update template: " + err.Error(),
+			},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
-		"message": "Template updated successfully",
+		"data":  response,
+		"error": nil,
 	})
 }
 
@@ -226,16 +238,18 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 
 	err := h.deleteTemplateUC.Execute(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Failed to delete template",
-			"details": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"data":  nil,
+			"error": map[string]interface{}{
+				"code":    "DELETE_TEMPLATE_FAILED",
+				"message": "Failed to delete template: " + err.Error(),
+			},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Template deleted successfully",
+		"data":  map[string]interface{}{"deleted": true},
+		"error": nil,
 	})
 }

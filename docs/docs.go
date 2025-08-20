@@ -952,16 +952,16 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "default": 1,
-                        "description": "Page number",
-                        "name": "page",
+                        "default": 0,
+                        "description": "Number of records to skip for pagination",
+                        "name": "skipCount",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 20,
-                        "description": "Page size",
-                        "name": "size",
+                        "description": "Maximum number of records to return per page (1-100)",
+                        "name": "maxResultCount",
                         "in": "query"
                     }
                 ],
@@ -1284,9 +1284,6 @@ const docTemplate = `{
                 "type"
             ],
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -1368,7 +1365,8 @@ const docTemplate = `{
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                        "type": "string"
+                        "type": "object",
+                        "additionalProperties": true
                     }
                 },
                 "settings": {
@@ -1460,17 +1458,7 @@ const docTemplate = `{
             "type": "object"
         },
         "notification_internal_domain_shared.ChannelType": {
-            "type": "string",
-            "enum": [
-                "email",
-                "slack",
-                "sms"
-            ],
-            "x-enum-varnames": [
-                "ChannelTypeEmail",
-                "ChannelTypeSlack",
-                "ChannelTypeSMS"
-            ]
+            "type": "object"
         },
         "notification_internal_domain_shared.CommonSettings": {
             "type": "object",
