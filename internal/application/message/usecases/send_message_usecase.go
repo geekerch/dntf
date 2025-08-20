@@ -27,7 +27,7 @@ type LegacyMessageRequest struct {
 	Header      string                 `json:"header"`
 	Footer      string                 `json:"footer"`
 	Variables   map[string]interface{} `json:"variables"`
-	SendList    []LegacySendListItem   `json:"sendList"`
+	SendList    []LegacySendListItem   `json:"sendList,omitempty"`
 	Attachments []LegacyAttachment     `json:"attachments"`
 }
 
