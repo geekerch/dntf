@@ -34,3 +34,6 @@ go.work
 
 # Generated docs
 /docs/
+plugins/
+plugins/
+plugins/*

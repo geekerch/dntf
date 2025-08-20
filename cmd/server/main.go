@@ -36,6 +36,7 @@ import (
 	"notification/internal/domain/shared"
 	"notification/internal/infrastructure/external"
 	"notification/internal/infrastructure/messaging"
+	"notification/internal/infrastructure/plugins"
 	"notification/internal/infrastructure/repository"
 	"notification/internal/presentation"
 	"notification/internal/presentation/http/handlers"
@@ -71,6 +72,23 @@ func main() {
 	// Initialize channel types registry
 	shared.MustInitializeChannelTypes()
 	log.Info("Channel types initialized successfully")
+
+	// Initialize plugin system
+	pluginDir := "./plugins"
+	if err := plugins.InitializePluginManager(pluginDir); err != nil {
+		log.Warn("Failed to initialize plugin system", zap.Error(err))
+	} else {
+		log.Info("Plugin system initialized successfully", zap.String("plugin_dir", pluginDir))
+		
+		// Create example plugin if plugins directory is empty
+		if pluginManager := plugins.GetPluginManager(); pluginManager != nil {
+			if err := pluginManager.CreateExamplePlugin(); err != nil {
+				log.Warn("Failed to create example plugin", zap.Error(err))
+			} else {
+				log.Info("Example plugin created successfully")
+			}
+		}
+	}
 
 	// Initialize database
 	db, err := database.NewGormDB(&cfg.Database)

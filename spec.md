@@ -4,6 +4,6 @@
 4. 有更好的建議和作法可以告訴我
 
 本次要做的事
-presentation中有nats與http的實做。請以nats的結構為主，去更新http的dto格式。nats中的data，就是http的request。請更新http的，並且連swagger的註解也要更新，並重新產生swagger
+你看我的插件擴充的設計。我想仿造traefik使用Yaegi來掛第三方插件，也就是我的channel可以用第三方的插件來通知，這方案可行嗎？
 
 

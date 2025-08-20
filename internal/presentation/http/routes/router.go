@@ -110,6 +110,9 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 		if config.MessageHandler != nil {
 			SetupMessageRoutes(protectedV1, config.MessageHandler)
 		}
+
+		// Plugin management routes
+		SetupPluginRoutes(protectedV1)
 	}
 
 	// CQRS API v2 routes (using CQRS pattern)
