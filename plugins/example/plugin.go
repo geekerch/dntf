@@ -113,3 +113,9 @@ func (s *ExampleSender) ValidateConfig(config interface{}) error {
 func NewPlugin() plugins.Plugin {
 	return &ExamplePlugin{}
 }
+
+// main function is required for Go modules but not used in plugins
+func main() {
+	// This function is not used when loaded as a plugin
+	// It's only here to satisfy Go's requirement for main packages
+}
