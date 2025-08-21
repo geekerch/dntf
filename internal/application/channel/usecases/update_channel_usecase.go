@@ -218,7 +218,7 @@ func (uc *UpdateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Cha
 
 // forwardUpdateToLegacySystem forwards the update request to the legacy system
 func (uc *UpdateChannelUseCase) forwardUpdateToLegacySystem(ctx context.Context, groupID string, domainObjects *DomainObjects, request *dtos.UpdateChannelRequest) error {
-	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups/" + groupID
+	legacyURL := uc.config.LegacySystem.URL + "/Groups/" + groupID
 	bearerToken := uc.config.LegacySystem.Token
 
 	// 1. Construct the request body for the legacy system

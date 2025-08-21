@@ -85,7 +85,7 @@ func (uc *DeleteChannelUseCase) Execute(ctx context.Context, channelID string) (
 
 // forwardDeleteToLegacySystem forwards the delete request to the legacy system
 func (uc *DeleteChannelUseCase) forwardDeleteToLegacySystem(ctx context.Context, groupID string) error {
-	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups"
+	legacyURL := uc.config.LegacySystem.URL + "/Groups"
 	bearerToken := uc.config.LegacySystem.Token
 
 	// 1. Construct the request body for the legacy system (array of group IDs)

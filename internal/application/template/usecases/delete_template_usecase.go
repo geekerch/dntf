@@ -76,12 +76,12 @@ func (uc *DeleteTemplateUseCase) updateLegacyChannelsForTemplateDelete(ctx conte
 	// Since we don't have FindByTemplateID, we'll get all channels and filter
 	filter := channel.NewChannelFilter()
 	pagination := &shared.Pagination{MaxResultCount: 100} // Get maximum allowed channels per query
-	
+
 	result, err := uc.channelRepo.FindAll(ctx, filter, pagination)
 	if err != nil {
 		return fmt.Errorf("failed to find channels: %w", err)
 	}
-	
+
 	// Filter channels that use this template
 	var channelsUsingTemplate []*channel.Channel
 	for _, ch := range result.Items {
@@ -103,7 +103,7 @@ func (uc *DeleteTemplateUseCase) updateLegacyChannelsForTemplateDelete(ctx conte
 
 // updateLegacyChannelForTemplateDelete updates a single channel in the legacy system for template deletion
 func (uc *DeleteTemplateUseCase) updateLegacyChannelForTemplateDelete(ctx context.Context, ch *channel.Channel) error {
-	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups/" + ch.ID().String()
+	legacyURL := uc.config.LegacySystem.URL + "/Groups/" + ch.ID().String()
 	bearerToken := uc.config.LegacySystem.Token
 
 	// Construct the request body for the legacy system

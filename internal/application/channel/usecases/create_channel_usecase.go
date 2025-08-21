@@ -247,7 +247,7 @@ func (uc *CreateChannelUseCase) convertToResponse(ch *channel.Channel) *dtos.Cha
 }
 
 func (uc *CreateChannelUseCase) forwardToLegacySystem(ctx context.Context, domainObjects *DomainObjects, request *dtos.CreateChannelRequest) (string, error) {
-	legacyURL := uc.config.LegacySystem.URL + "/api/v2.0/Groups"
+	legacyURL := uc.config.LegacySystem.URL + "/Groups"
 	bearerToken := uc.config.LegacySystem.Token
 
 	// 1. Construct the request body for the legacy system
