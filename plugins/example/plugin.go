@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"notification/pkg/plugins"
+	"notification/internal/domain/shared"
 )
 
 // ExamplePlugin demonstrates how to create a plugin
@@ -13,8 +13,8 @@ type ExamplePlugin struct {
 	config map[string]interface{}
 }
 
-func (p *ExamplePlugin) GetInfo() plugins.PluginInfo {
-	return plugins.PluginInfo{
+func (p *ExamplePlugin) GetInfo() PluginInfo {
+	return PluginInfo{
 		Name:        "example",
 		Version:     "1.0.0",
 		Description: "Example plugin for demonstration",
@@ -23,7 +23,7 @@ func (p *ExamplePlugin) GetInfo() plugins.PluginInfo {
 	}
 }
 
-func (p *ExamplePlugin) GetChannelType() plugins.ChannelTypeDefinition {
+func (p *ExamplePlugin) GetChannelType() shared.ChannelTypeDefinition {
 	return &ExampleChannelType{}
 }
 
@@ -57,12 +57,12 @@ func (e *ExampleChannelType) ValidateConfig(config map[string]interface{}) error
 	if config == nil {
 		return fmt.Errorf("config cannot be nil")
 	}
-
+	
 	// Example validation
 	if url, ok := config["url"].(string); !ok || url == "" {
 		return fmt.Errorf("url is required")
 	}
-
+	
 	return nil
 }
 
@@ -110,12 +110,6 @@ func (s *ExampleSender) ValidateConfig(config interface{}) error {
 }
 
 // Plugin entry point - this function must be exported
-func NewPlugin() plugins.Plugin {
+func NewPlugin() Plugin {
 	return &ExamplePlugin{}
-}
-
-// main function is required for Go modules but not used in plugins
-func main() {
-	// This function is not used when loaded as a plugin
-	// It's only here to satisfy Go's requirement for main packages
 }
