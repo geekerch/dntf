@@ -34,6 +34,7 @@ type ServerConfig struct {
 	CQRSChannelHandler *handlers.CQRSChannelHandler
 	TemplateHandler    *handlers.TemplateHandler
 	MessageHandler     *handlers.MessageHandler
+	HealthHandler      *handlers.HealthHandler
 
 	// CQRS handlers
 	CQRSTemplateHandler *handlers.CQRSTemplateHandler
@@ -58,6 +59,7 @@ func NewServer(config *ServerConfig) *Server {
 		CQRSTemplateHandler: config.CQRSTemplateHandler,
 		CQRSMessageHandler:  config.CQRSMessageHandler,
 		MiddlewareConfig:    config.MiddlewareConfig,
+		HealthHandler:       config.HealthHandler,
 	}
 	router := routes.SetupRouter(routerConfig)
 

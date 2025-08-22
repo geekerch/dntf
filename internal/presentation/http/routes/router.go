@@ -6,8 +6,8 @@ import (
 	"notification/internal/presentation/http/handlers"
 	"notification/internal/presentation/http/middleware"
 
-	"github.com/swaggo/gin-swagger" // gin-swagger middleware
-	"github.com/swaggo/files" // swagger embed files
+	swaggerFiles "github.com/swaggo/files"     // swagger embed files
+	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
 )
 
 // RouterConfig holds the configuration for setting up routes
@@ -16,13 +16,15 @@ type RouterConfig struct {
 	CQRSChannelHandler *handlers.CQRSChannelHandler
 	TemplateHandler    *handlers.TemplateHandler
 	MessageHandler     *handlers.MessageHandler
-	
+
 	// CQRS handlers
 	CQRSTemplateHandler *handlers.CQRSTemplateHandler
 	CQRSMessageHandler  *handlers.CQRSMessageHandler
-	
+
 	// Middleware configuration
 	MiddlewareConfig *middleware.MiddlewareConfig
+
+	HealthHandler *handlers.HealthHandler
 }
 
 // SetupRouter sets up the main router with all routes and middleware
@@ -37,7 +39,7 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 	if middlewareConfig == nil {
 		middlewareConfig = middleware.DefaultMiddlewareConfig()
 	}
-	
+
 	middlewareManager := middleware.NewMiddlewareManager(middlewareConfig)
 	middlewareManager.SetupMiddleware(router)
 
@@ -47,14 +49,13 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 	// @Tags system
 	// @Produce json
 	// @Success 200 {object} models.HealthResponse "API is healthy"
-	// @Router /health [get]
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "healthy",
-			"service": "notification-api",
-			"version": "1.0.0",
-		})
-	})
+	// @Router /healthz [get]
+	// Health check endpoints (public)
+	if config.HealthHandler != nil {
+		router.GET("/healthz", config.HealthHandler.Healthz)
+		router.GET("/health-status", config.HealthHandler.HealthStatus)
+		router.GET("/health", config.HealthHandler.Health)
+	}
 
 	// Metrics endpoint (public, but could be protected)
 	router.GET("/metrics", func(c *gin.Context) {
@@ -82,7 +83,7 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 				"version": "1.0.0",
 				"endpoints": []string{
 					"/api/v1/channels",
-					"/api/v1/templates", 
+					"/api/v1/templates",
 					"/api/v1/messages",
 					"/api/v2/channels (CQRS)",
 					"/api/v2/templates (CQRS)",
@@ -123,12 +124,12 @@ func SetupRouter(config *RouterConfig) *gin.Engine {
 		if config.CQRSChannelHandler != nil {
 			SetupCQRSChannelRoutes(cqrsV2, config.CQRSChannelHandler)
 		}
-		
+
 		// CQRS Template routes
 		if config.CQRSTemplateHandler != nil {
 			SetupCQRSTemplateRoutes(cqrsV2, config.CQRSTemplateHandler)
 		}
-		
+
 		// CQRS Message routes
 		if config.CQRSMessageHandler != nil {
 			SetupCQRSMessageRoutes(cqrsV2, config.CQRSMessageHandler)

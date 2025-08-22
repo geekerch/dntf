@@ -19,6 +19,7 @@ import (
 	channelcqrs "notification/internal/application/cqrs/channel"
 	messagecqrs "notification/internal/application/cqrs/message"
 	templatecqrs "notification/internal/application/cqrs/template"
+	healthusecases "notification/internal/application/health/usecases"
 	messageusecases "notification/internal/application/message/usecases"
 	templateusecases "notification/internal/application/template/usecases"
 	"notification/internal/domain/services"
@@ -128,6 +129,12 @@ func main() {
 		container.DeleteTemplateUseCase,
 	)
 
+	// Initialize health HTTP handler
+	healthHandler := handlers.NewHealthHandler(
+		container.GetSystemHealthUseCase,
+		container.GetLivenessUseCase,
+		container.GetLegacyHealthUseCase,
+	)
 	// Initialize message HTTP handler
 	messageHandler := handlers.NewMessageHandler(
 		container.SendMessageUseCase,
@@ -181,6 +188,7 @@ func main() {
 		NATSManager:         natsManager,
 		CQRSNATSHandler:     cqrsNatsHandler,
 		MiddlewareConfig:    middlewareConfig,
+		HealthHandler:       healthHandler,
 	}
 	server := presentation.NewServer(serverConfig)
 
@@ -240,6 +248,11 @@ type Container struct {
 	GetMessageUseCase   *messageusecases.GetMessageUseCase
 	ListMessagesUseCase *messageusecases.ListMessagesUseCase
 
+	// Use Cases - Health
+	GetSystemHealthUseCase *healthusecases.GetSystemHealthUseCase
+	GetLivenessUseCase     *healthusecases.GetLivenessUseCase
+	GetLegacyHealthUseCase *healthusecases.GetLegacyHealthUseCase
+
 	// CQRS Components
 	CQRSManager *cqrs.CQRSManager
 	CQRSFacade  *cqrs.CQRSFacade
@@ -292,6 +305,11 @@ func buildContainer(db *database.GormDB, natsClient *messaging.NATSClient, log *
 	sendMessageUseCase := messageusecases.NewSendMessageUseCase(messageRepo, channelRepo, templateRepo, messageSender, cfg)
 	getMessageUseCase := messageusecases.NewGetMessageUseCase(messageRepo)
 	listMessagesUseCase := messageusecases.NewListMessagesUseCase(messageRepo)
+
+	// Initialize health use cases
+	getSystemHealthUseCase := healthusecases.NewGetSystemHealthUseCase()
+	getLivenessUseCase := healthusecases.NewGetLivenessUseCase()
+	getLegacyHealthUseCase := healthusecases.NewGetLegacyHealthUseCase()
 
 	// Initialize CQRS system
 	cqrsManager := cqrs.NewCQRSManager()
@@ -437,6 +455,11 @@ func buildContainer(db *database.GormDB, natsClient *messaging.NATSClient, log *
 		SendMessageUseCase:  sendMessageUseCase,
 		GetMessageUseCase:   getMessageUseCase,
 		ListMessagesUseCase: listMessagesUseCase,
+
+		// Use Cases - Health
+		GetSystemHealthUseCase: getSystemHealthUseCase,
+		GetLivenessUseCase:     getLivenessUseCase,
+		GetLegacyHealthUseCase: getLegacyHealthUseCase,
 
 		// CQRS Components
 		CQRSManager: cqrsManager,
