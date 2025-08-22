@@ -1,83 +1,88 @@
 #!/bin/bash
 
-# 部署腳本 - 將 Notification API 部署到 Docker
+# 部署腳本 - 將專案 build 成 Docker 並部署在本機
 
 set -e
 
 echo "🚀 開始部署 Notification API..."
 
-# 檢查 Docker 是否運行
-if ! docker info > /dev/null 2>&1; then
-    echo "❌ Docker 未運行，請先啟動 Docker"
+# 檢查 Docker 是否安裝
+if ! command -v docker &> /dev/null; then
+    echo "❌ Docker 未安裝，請先安裝 Docker"
     exit 1
 fi
 
-# 檢查必要的服務是否運行
-echo "🔍 檢查依賴服務..."
-
-# 檢查 PostgreSQL
-if ! nc -z localhost 5432 2>/dev/null; then
-    echo "❌ PostgreSQL (端口 5432) 未運行"
-    echo "請確保 PostgreSQL 服務已啟動"
+if ! command -v docker-compose &> /dev/null; then
+    echo "❌ Docker Compose 未安裝，請先安裝 Docker Compose"
     exit 1
 fi
-echo "✅ PostgreSQL 服務正常"
 
-# 檢查 NATS
-if ! nc -z localhost 4222 2>/dev/null; then
-    echo "❌ NATS (端口 4222) 未運行"
-    echo "請確保 NATS 服務已啟動"
+# 檢查 .env 文件是否存在
+if [ ! -f ".env" ]; then
+    echo "❌ .env 文件不存在，請先創建 .env 文件"
     exit 1
 fi
-echo "✅ NATS 服務正常"
+
+# 檢查 NATS credentials 文件是否存在
+if [ ! -f "cmd/server/edgesync_shadowagent.creds" ]; then
+    echo "❌ NATS credentials 文件不存在: cmd/server/edgesync_shadowagent.creds"
+    exit 1
+fi
+
+echo "📋 檢查配置文件..."
+echo "✅ .env 文件存在"
+echo "✅ NATS credentials 文件存在"
 
 # 停止並移除現有容器（如果存在）
 echo "🛑 停止現有容器..."
-docker-compose -f docker-compose.standalone.yml down 2>/dev/null || true
+docker-compose -f docker-compose.deploy.yml down --remove-orphans || true
 
-# 構建新的映像
+# 清理舊的 Docker 映像（可選）
+echo "🧹 清理舊的 Docker 映像..."
+docker image prune -f || true
+
+# 構建新的 Docker 映像
 echo "🔨 構建 Docker 映像..."
-docker-compose -f docker-compose.standalone.yml build --no-cache
+docker-compose -f docker-compose.deploy.yml build --no-cache
 
-# 啟動服務
-echo "🚀 啟動服務..."
-docker-compose -f docker-compose.standalone.yml up -d
+# 啟動容器
+echo "🚀 啟動容器..."
+docker-compose -f docker-compose.deploy.yml up -d
 
-# 等待服務啟動
-echo "⏳ 等待服務啟動..."
+# 等待容器啟動
+echo "⏳ 等待容器啟動..."
 sleep 10
 
-# 檢查服務狀態
-echo "🔍 檢查服務狀態..."
-if docker-compose -f docker-compose.standalone.yml ps | grep -q "Up"; then
-    echo "✅ 服務啟動成功！"
-    
-    # 檢查健康狀態
-    echo "🏥 檢查健康狀態..."
-    for i in {1..30}; do
-        if curl -s http://localhost:8080/health > /dev/null; then
-            echo "✅ 健康檢查通過！"
-            break
-        fi
-        echo "⏳ 等待健康檢查... ($i/30)"
+# 檢查容器狀態
+echo "📊 檢查容器狀態..."
+docker-compose -f docker-compose.deploy.yml ps
+
+# 檢查健康狀態
+echo "🏥 檢查應用健康狀態..."
+for i in {1..30}; do
+    if curl -f http://localhost:8080/health &>/dev/null; then
+        echo "✅ 應用啟動成功！"
+        echo "🌐 API 可在以下地址訪問: http://localhost:8080"
+        echo "📚 API 文檔: http://localhost:8080/swagger/index.html"
+        break
+    else
+        echo "⏳ 等待應用啟動... ($i/30)"
         sleep 2
-    done
+    fi
     
-    echo ""
-    echo "🎉 部署完成！"
-    echo "📊 服務信息："
-    echo "   - API 端點: http://localhost:8080"
-    echo "   - Swagger 文檔: http://localhost:8080/swagger/index.html"
-    echo "   - 健康檢查: http://localhost:8080/health"
-    echo ""
-    echo "📋 管理命令："
-    echo "   - 查看日誌: docker-compose -f docker-compose.standalone.yml logs -f"
-    echo "   - 停止服務: docker-compose -f docker-compose.standalone.yml down"
-    echo "   - 重啟服務: docker-compose -f docker-compose.standalone.yml restart"
-    
-else
-    echo "❌ 服務啟動失敗"
-    echo "查看日誌："
-    docker-compose -f docker-compose.standalone.yml logs
-    exit 1
-fi
+    if [ $i -eq 30 ]; then
+        echo "❌ 應用啟動超時，請檢查日誌"
+        echo "📋 查看日誌命令: docker-compose -f docker-compose.deploy.yml logs -f"
+        exit 1
+    fi
+done
+
+echo ""
+echo "🎉 部署完成！"
+echo ""
+echo "📋 常用命令:"
+echo "  查看日誌: docker-compose -f docker-compose.deploy.yml logs -f"
+echo "  停止服務: docker-compose -f docker-compose.deploy.yml down"
+echo "  重啟服務: docker-compose -f docker-compose.deploy.yml restart"
+echo "  查看狀態: docker-compose -f docker-compose.deploy.yml ps"
+echo ""
