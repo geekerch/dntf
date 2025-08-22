@@ -37,3 +37,4 @@ go.work
 plugins/
 plugins/
 plugins/*
+spec.md
