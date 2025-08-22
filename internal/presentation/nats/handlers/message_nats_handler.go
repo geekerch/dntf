@@ -79,14 +79,14 @@ func (h *MessageNATSHandler) handleSendMessage(msg *nats.Msg) {
 		return
 	}
 
-	// Forward to legacy system first
-	responses, err := h.sendUseCase.Forward(ctx, &request)
+	// Execute the send message use case
+	response, err := h.sendUseCase.Execute(ctx, &request)
 	if err != nil {
-		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to forward message to legacy system", err.Error())
+		h.sendErrorResponse(msg, natsReq.ReqSeqId, "EXECUTION_ERROR", "Failed to send message", err.Error())
 		return
 	}
 
-	h.sendSuccessResponse(msg, natsReq.ReqSeqId, responses)
+	h.sendSuccessResponse(msg, natsReq.ReqSeqId, response)
 }
 
 // handleGetMessage handles get message NATS messages

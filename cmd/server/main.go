@@ -1,19 +1,8 @@
 package main
 
-// @title          Event Center API
+// @title          Notification API
 // @version        1.0
-// @description    This is the API documentation for the Event Center service.
-// @termsOfService http://swagger.io/terms/
-
-// @contact.name   API Support
-// @contact.url    http://www.swagger.io/support
-// @contact.email  support@swagger.io
-
-// @license.name   Apache 2.0
-// @license.url    http://www.apache.org/licenses/LICENSE-2.0.html
-
-// @host           localhost:8080
-// @BasePath       /api/v1
+// @description    This is the API documentation for the Notification service.
 
 import (
 	"context"
@@ -26,12 +15,12 @@ import (
 	"go.uber.org/zap"
 
 	"notification/internal/application/channel/usecases"
-	templateusecases "notification/internal/application/template/usecases"
-	messageusecases "notification/internal/application/message/usecases"
 	"notification/internal/application/cqrs"
 	channelcqrs "notification/internal/application/cqrs/channel"
-	templatecqrs "notification/internal/application/cqrs/template"
 	messagecqrs "notification/internal/application/cqrs/message"
+	templatecqrs "notification/internal/application/cqrs/template"
+	messageusecases "notification/internal/application/message/usecases"
+	templateusecases "notification/internal/application/template/usecases"
 	"notification/internal/domain/services"
 	"notification/internal/domain/shared"
 	"notification/internal/infrastructure/external"
@@ -79,7 +68,7 @@ func main() {
 		log.Warn("Failed to initialize plugin system", zap.Error(err))
 	} else {
 		log.Info("Plugin system initialized successfully", zap.String("plugin_dir", pluginDir))
-		
+
 		// Create example plugin if plugins directory is empty
 		if pluginManager := plugins.GetPluginManager(); pluginManager != nil {
 			if err := pluginManager.CreateExamplePlugin(); err != nil {
@@ -181,17 +170,17 @@ func main() {
 
 	// Initialize presentation layer server
 	serverConfig := &presentation.ServerConfig{
-		HTTPPort:           fmt.Sprintf("%d", cfg.Server.Port),
-		HTTPTimeout:        time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		ChannelHandler:     channelHandler,
-		CQRSChannelHandler: cqrsChannelHandler,
-		TemplateHandler:    templateHandler,
-		MessageHandler:     messageHandler,
+		HTTPPort:            fmt.Sprintf("%d", cfg.Server.Port),
+		HTTPTimeout:         time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		ChannelHandler:      channelHandler,
+		CQRSChannelHandler:  cqrsChannelHandler,
+		TemplateHandler:     templateHandler,
+		MessageHandler:      messageHandler,
 		CQRSTemplateHandler: cqrsTemplateHandler,
 		CQRSMessageHandler:  cqrsMessageHandler,
-		NATSManager:        natsManager,
-		CQRSNATSHandler:    cqrsNatsHandler,
-		MiddlewareConfig:   middlewareConfig,
+		NATSManager:         natsManager,
+		CQRSNATSHandler:     cqrsNatsHandler,
+		MiddlewareConfig:    middlewareConfig,
 	}
 	server := presentation.NewServer(serverConfig)
 

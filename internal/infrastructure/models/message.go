@@ -7,7 +7,7 @@ import (
 // MessageModel represents the message table structure for GORM
 type MessageModel struct {
 	ID               string             `gorm:"primaryKey;type:varchar(255)" json:"id"`
-	ChannelIDs       JSON               `gorm:"type:jsonb;not null" json:"channel_ids"`
+	ChannelIDs       JSONArray          `gorm:"type:jsonb;not null" json:"channel_ids"`
 	Variables        JSON               `gorm:"type:jsonb;not null" json:"variables"`
 	ChannelOverrides JSON               `gorm:"type:jsonb;not null;default:'{}'" json:"channel_overrides"`
 	Status           string             `gorm:"type:varchar(50);not null;default:'pending';index:idx_messages_status;check:status IN ('pending','success','failed','partial_success')" json:"status"`

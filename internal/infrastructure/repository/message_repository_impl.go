@@ -125,18 +125,15 @@ func (r *MessageRepositoryImpl) Exists(ctx context.Context, id *message.MessageI
 
 // toMessageModel converts domain message to GORM model
 func (r *MessageRepositoryImpl) toMessageModel(msg *message.Message) (*models.MessageModel, error) {
-	// Convert channel IDs to JSON
+	// Convert channel IDs to JSONArray
 	channelIDStrings := make([]string, 0, msg.ChannelIDs().Count())
 	for _, id := range msg.ChannelIDs().ToSlice() {
 		channelIDStrings = append(channelIDStrings, id.String())
 	}
-	channelIDs := models.JSON{}
-	channelIDData, err := json.Marshal(channelIDStrings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal channel IDs: %w", err)
-	}
-	if err := json.Unmarshal(channelIDData, &channelIDs); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal channel IDs to JSON type: %w", err)
+	// Convert string array to JSONArray (array of maps)
+	channelIDs := make(models.JSONArray, len(channelIDStrings))
+	for i, idStr := range channelIDStrings {
+		channelIDs[i] = map[string]interface{}{"id": idStr}
 	}
 
 	// Convert variables to JSON
@@ -191,14 +188,14 @@ func (r *MessageRepositoryImpl) fromMessageModel(model *models.MessageModel) (*m
 		return nil, fmt.Errorf("invalid message ID: %w", err)
 	}
 
-	// Convert channel IDs
-	var channelIDStrings []string
-	channelIDData, err := json.Marshal(model.ChannelIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal channel IDs: %w", err)
-	}
-	if err := json.Unmarshal(channelIDData, &channelIDStrings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal channel IDs: %w", err)
+	// Convert channel IDs from JSONArray
+	channelIDStrings := make([]string, len(model.ChannelIDs))
+	for i, idMap := range model.ChannelIDs {
+		if id, ok := idMap["id"].(string); ok {
+			channelIDStrings[i] = id
+		} else {
+			return nil, fmt.Errorf("invalid channel ID format in database")
+		}
 	}
 
 	channelIDs := make([]*channel.ChannelID, 0, len(channelIDStrings))

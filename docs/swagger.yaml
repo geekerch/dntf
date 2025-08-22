@@ -1,5 +1,14 @@
-basePath: /api/v1
 definitions:
+  internal_presentation_http_handlers.LoadPluginRequest:
+    properties:
+      name:
+        type: string
+      source:
+        type: string
+    required:
+    - name
+    - source
+    type: object
   notification_internal_application_channel_dtos.CommonSettingsDTO:
     properties:
       retryAttempts:
@@ -184,18 +193,10 @@ definitions:
         description: timeout in milliseconds
         type: integer
     type: object
-host: localhost:8080
 info:
-  contact:
-    email: support@swagger.io
-    name: API Support
-    url: http://www.swagger.io/support
-  description: This is the API documentation for the Event Center service.
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
-  title: Event Center API
+  contact: {}
+  description: This is the API documentation for the Notification service.
+  title: Notification API
   version: "1.0"
 paths:
   /api/v1/channels:
@@ -794,6 +795,168 @@ paths:
       summary: Get a message by ID
       tags:
       - messages
+  /plugins:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all loaded plugins with their statuses
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with plugins list
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List all loaded plugins
+      tags:
+      - plugins
+  /plugins/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Unload a specific plugin by name
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Plugin unloaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Plugin not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Unload a plugin
+      tags:
+      - plugins
+    get:
+      consumes:
+      - application/json
+      description: Get the status and information of a specific plugin
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with plugin status
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Plugin not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get plugin status by name
+      tags:
+      - plugins
+  /plugins/load:
+    post:
+      consumes:
+      - application/json
+      description: Load a new plugin from Go source code using Yaegi interpreter
+      parameters:
+      - description: Load plugin request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presentation_http_handlers.LoadPluginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Plugin loaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Load a plugin from source code
+      tags:
+      - plugins
+  /plugins/load-file:
+    post:
+      consumes:
+      - application/json
+      description: Load a plugin from a file path on the server
+      parameters:
+      - description: Load plugin from file request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Plugin loaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Load a plugin from file path
+      tags:
+      - plugins
   /templates:
     get:
       consumes:
